@@ -1,0 +1,151 @@
+Prompt Title: 🌍 Build a Global Multilingual News Platform with Dashboard & Video Integration
+
+Description / Instructions:
+
+Create a full-stack international news website called GlobalPulse News using the following details:
+
+🧩 Tech Stack
+
+Frontend: Next.js + Bootstrap 5 + SASS (SCSS)
+
+Backend: Node.js + Express.js + MongoDB (Atlas)
+
+Styling: SASS modules with responsive design, light/dark mode toggle
+
+Languages: English, Urdu, and Arabic (with proper fonts and RTL support)
+
+Dashboard: Admin area for posting articles and videos
+
+Integrations: YouTube, Facebook, Twitter (X), TikTok, and Instagram embeds
+
+Hosting-ready: Should run on Replit and connect to MongoDB Atlas
+
+📁 Folder Structure
+globalpulse-news/
+├── frontend/
+│   ├── pages/
+│   │   ├── index.js
+│   │   ├── videos.js
+│   │   ├── dashboard.js
+│   │   └── _app.js
+│   ├── components/
+│   │   ├── Header.js
+│   │   ├── Footer.js
+│   │   ├── NewsCard.js
+│   │   ├── VideoCard.js
+│   │   ├── LanguageSelector.js
+│   │   ├── ThemeToggle.js
+│   │   └── SocialFeed.js
+│   ├── styles/
+│   │   ├── global.scss
+│   │   ├── _variables.scss
+│   │   ├── _mixins.scss
+│   │   └── _themes.scss
+│   └── package.json
+│
+├── backend/
+│   ├── server.js
+│   ├── config/
+│   │   └── db.js
+│   ├── models/
+│   │   ├── Article.js
+│   │   └── Video.js
+│   ├── routes/
+│   │   ├── articles.js
+│   │   └── videos.js
+│   └── package.json
+│
+├── .env
+└── README.md
+
+⚙️ Backend Features
+
+Connect to MongoDB Atlas using MONGODB_URI in .env.
+
+Provide /api/articles and /api/videos routes (GET, POST).
+
+Article model: multilingual titles, descriptions, category, image.
+
+Video model: multilingual titles, platform type, video URL.
+
+Secure admin routes for dashboard posting.
+
+🖥️ Frontend Features
+
+Home Page (index.js): Show top news in English, Urdu, Arabic tabs.
+
+Videos Page: Fetch /api/videos and embed YouTube/Facebook/TikTok/etc.
+
+Dashboard: Simple CMS for uploading news & videos.
+
+Language Switcher: <LanguageSelector /> toggles EN/UR/AR and RTL.
+
+Dark/Light Mode: <ThemeToggle /> changes themes via SASS variables.
+
+Social Feed: Embeds from Facebook, Twitter, and YouTube Live.
+
+🖋️ Fonts & Language Styles (in global.scss)
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans&family=Noto+Naskh+Arabic&family=Noto+Nastaliq+Urdu&display=swap');
+
+body {
+  font-family: 'Noto Sans', sans-serif;
+  transition: background 0.3s, color 0.3s;
+}
+
+[lang="ar"] { direction: rtl; font-family: 'Noto Naskh Arabic', serif; }
+[lang="ur"] { direction: rtl; font-family: 'Noto Nastaliq Urdu', serif; }
+[lang="en"] { direction: ltr; }
+
+📱 Responsiveness
+
+Use Bootstrap grid system.
+
+Add SCSS mixins for mobile/tablet/desktop breakpoints.
+
+Ensure video iframes and cards scale fluidly.
+
+🌐 Media Integration
+
+YouTube: Embed via iframe.
+
+Facebook: Use page plugin embed.
+
+Twitter: Use tweet embed.
+
+TikTok / Instagram: Use their embed codes.
+
+Auto-resize on smaller screens.
+
+🔐 Dashboard Access
+
+Use a simple /admin-login with environment credentials (ADMIN_USER, ADMIN_PASS).
+
+Allow posting news articles and videos from dashboard.
+
+✅ Deliverables
+
+Fully functional Next.js + Express.js project.
+
+Backend APIs working on Replit.
+
+Frontend multilingual UI with dark/light toggle.
+
+Dashboard to manage content.
+
+Embedded video & social news integration.
+
+Fully responsive layout across all devices.
+
+🚀 Goal
+
+A complete, international-level news platform (like BBC or Al Jazeera) with:
+
+Multilingual content (EN/UR/AR),
+
+Dark/light theme,
+
+Social and video integrations,
+
+Responsive dashboard,
+
+Global scalability.
