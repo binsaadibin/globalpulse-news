@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import NewsCard from '@/components/NewsCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Filter } from 'lucide-react';
 import techImage from '@assets/generated_images/Technology_conference_news_image_a9827700.png';
 import businessImage from '@assets/generated_images/Business_news_image_9e644ece.png';
 import sportsImage from '@assets/generated_images/Sports_news_image_d2821d40.png';
@@ -163,16 +166,31 @@ const newsData = {
 };
 
 const translations = {
-  en: { topNews: 'Top News', featured: 'Featured' },
-  ar: { topNews: 'أهم الأخبار', featured: 'مميز' },
-  ur: { topNews: 'اہم خبریں', featured: 'نمایاں' },
+  en: { topNews: 'Top News', featured: 'Featured', search: 'Search articles...', filter: 'Filter by category', all: 'All', noResults: 'No articles found' },
+  ar: { topNews: 'أهم الأخبار', featured: 'مميز', search: 'ابحث عن المقالات...', filter: 'تصفية حسب الفئة', all: 'الكل', noResults: 'لم يتم العثور على مقالات' },
+  ur: { topNews: 'اہم خبریں', featured: 'نمایاں', search: 'مضامین تلاش کریں...', filter: 'زمرے کے لحاظ سے فلٹر کریں', all: 'تمام', noResults: 'کوئی مضمون نہیں ملا' },
 };
 
 export default function Home() {
   const { language } = useLanguage();
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const news = newsData[language];
   const t = translations[language];
+
+  const filteredNews = useMemo(() => {
+    return news.filter(article => {
+      const matchesSearch = searchQuery === '' || 
+        article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        article.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = categoryFilter === 'all' || 
+        article.category.toLowerCase() === categoryFilter.toLowerCase();
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [news, searchQuery, categoryFilter]);
 
   const handleNewsClick = (newsId: string) => {
     console.log('News clicked:', newsId);
@@ -184,10 +202,41 @@ export default function Home() {
         {t.topNews}
       </h1>
 
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder={t.search}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search-articles"
+          />
+        </div>
+        <div className="flex items-center gap-2 min-w-[200px]">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger data-testid="select-filter-category">
+              <SelectValue placeholder={t.filter} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t.all}</SelectItem>
+              <SelectItem value="technology">{language === 'en' ? 'Technology' : language === 'ar' ? 'تكنولوجيا' : 'ٹیکنالوجی'}</SelectItem>
+              <SelectItem value="business">{language === 'en' ? 'Business' : language === 'ar' ? 'أعمال' : 'کاروبار'}</SelectItem>
+              <SelectItem value="sports">{language === 'en' ? 'Sports' : language === 'ar' ? 'رياضة' : 'کھیل'}</SelectItem>
+              <SelectItem value="politics">{language === 'en' ? 'Politics' : language === 'ar' ? 'سياسة' : 'سیاست'}</SelectItem>
+              <SelectItem value="environment">{language === 'en' ? 'Environment' : language === 'ar' ? 'بيئة' : 'ماحولیات'}</SelectItem>
+              <SelectItem value="health">{language === 'en' ? 'Health' : language === 'ar' ? 'صحة' : 'صحت'}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <Tabs defaultValue="all" className="mb-8" onValueChange={setSelectedCategory}>
         <TabsList className="mb-6">
           <TabsTrigger value="all" data-testid="tab-all">
-            {language === 'en' ? 'All' : language === 'ar' ? 'الكل' : 'تمام'}
+            {t.all}
           </TabsTrigger>
           <TabsTrigger value="featured" data-testid="tab-featured">
             {t.featured}
@@ -195,35 +244,47 @@ export default function Home() {
         </TabsList>
 
         <TabsContent value="all" className="mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {news.map((article) => (
-              <NewsCard
-                key={article.id}
-                title={article.title}
-                description={article.description}
-                category={article.category}
-                imageUrl={article.imageUrl}
-                timeAgo={article.timeAgo}
-                onClick={() => handleNewsClick(article.id)}
-              />
-            ))}
-          </div>
+          {filteredNews.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground" data-testid="text-no-results">{t.noResults}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredNews.map((article) => (
+                <NewsCard
+                  key={article.id}
+                  title={article.title}
+                  description={article.description}
+                  category={article.category}
+                  imageUrl={article.imageUrl}
+                  timeAgo={article.timeAgo}
+                  onClick={() => handleNewsClick(article.id)}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="featured" className="mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {news.slice(0, 3).map((article) => (
-              <NewsCard
-                key={article.id}
-                title={article.title}
-                description={article.description}
-                category={article.category}
-                imageUrl={article.imageUrl}
-                timeAgo={article.timeAgo}
-                onClick={() => handleNewsClick(article.id)}
-              />
-            ))}
-          </div>
+          {filteredNews.slice(0, 3).length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">{t.noResults}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredNews.slice(0, 3).map((article) => (
+                <NewsCard
+                  key={article.id}
+                  title={article.title}
+                  description={article.description}
+                  category={article.category}
+                  imageUrl={article.imageUrl}
+                  timeAgo={article.timeAgo}
+                  onClick={() => handleNewsClick(article.id)}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

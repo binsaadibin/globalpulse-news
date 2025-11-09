@@ -1,5 +1,9 @@
+import { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import VideoCard from '@/components/VideoCard';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search, Filter } from 'lucide-react';
 
 const videoData = {
   en: [
@@ -74,15 +78,30 @@ const videoData = {
 };
 
 const translations = {
-  en: { videos: 'Latest Videos', watch: 'Watch Now' },
-  ar: { videos: 'أحدث الفيديوهات', watch: 'شاهد الآن' },
-  ur: { videos: 'تازہ ترین ویڈیوز', watch: 'ابھی دیکھیں' },
+  en: { videos: 'Latest Videos', watch: 'Watch Now', search: 'Search videos...', filter: 'Filter by platform', all: 'All Platforms', noResults: 'No videos found' },
+  ar: { videos: 'أحدث الفيديوهات', watch: 'شاهد الآن', search: 'ابحث عن الفيديوهات...', filter: 'تصفية حسب المنصة', all: 'جميع المنصات', noResults: 'لم يتم العثور على فيديوهات' },
+  ur: { videos: 'تازہ ترین ویڈیوز', watch: 'ابھی دیکھیں', search: 'ویڈیوز تلاش کریں...', filter: 'پلیٹ فارم کے مطابق فلٹر کریں', all: 'تمام پلیٹ فارمز', noResults: 'کوئی ویڈیو نہیں ملی' },
 };
 
 export default function Videos() {
   const { language } = useLanguage();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [platformFilter, setPlatformFilter] = useState<string>('all');
   const videos = videoData[language];
   const t = translations[language];
+
+  const filteredVideos = useMemo(() => {
+    return videos.filter(video => {
+      const matchesSearch = searchQuery === '' || 
+        video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (video.description && video.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesPlatform = platformFilter === 'all' || 
+        video.platform.toLowerCase() === platformFilter.toLowerCase();
+      
+      return matchesSearch && matchesPlatform;
+    });
+  }, [videos, searchQuery, platformFilter]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -90,17 +109,52 @@ export default function Videos() {
         {t.videos}
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-        {videos.map((video) => (
-          <VideoCard
-            key={video.id}
-            title={video.title}
-            platform={video.platform}
-            videoUrl={video.videoUrl}
-            description={video.description}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder={t.search}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search-videos"
           />
-        ))}
+        </div>
+        <div className="flex items-center gap-2 min-w-[200px]">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <Select value={platformFilter} onValueChange={setPlatformFilter}>
+            <SelectTrigger data-testid="select-filter-platform">
+              <SelectValue placeholder={t.filter} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t.all}</SelectItem>
+              <SelectItem value="youtube">YouTube</SelectItem>
+              <SelectItem value="facebook">Facebook</SelectItem>
+              <SelectItem value="tiktok">TikTok</SelectItem>
+              <SelectItem value="instagram">Instagram</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {filteredVideos.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground" data-testid="text-no-results">{t.noResults}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          {filteredVideos.map((video) => (
+            <VideoCard
+              key={video.id}
+              title={video.title}
+              platform={video.platform}
+              videoUrl={video.videoUrl}
+              description={video.description}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

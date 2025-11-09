@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Video } from 'lucide-react';
+import { FileText, Video, User } from 'lucide-react';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 const translations = {
   en: {
@@ -28,6 +31,7 @@ const translations = {
     publish: 'Publish',
     draft: 'Save as Draft',
     success: 'Published successfully!',
+    loggedInAs: 'Logged in as',
   },
   ar: {
     dashboard: 'لوحة التحكم',
@@ -46,6 +50,7 @@ const translations = {
     publish: 'نشر',
     draft: 'حفظ كمسودة',
     success: 'تم النشر بنجاح!',
+    loggedInAs: 'مسجل الدخول كـ',
   },
   ur: {
     dashboard: 'ڈیش بورڈ',
@@ -64,11 +69,13 @@ const translations = {
     publish: 'شائع کریں',
     draft: 'مسودے کے طور پر محفوظ کریں',
     success: 'کامیابی سے شائع ہوگیا!',
+    loggedInAs: 'کے طور پر لاگ ان ہیں',
   },
 };
 
-export default function Dashboard() {
+function DashboardContent() {
   const { language } = useLanguage();
+  const { currentUser } = useAuth();
   const t = translations[language];
   const { toast } = useToast();
 
@@ -112,9 +119,15 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8" data-testid="text-page-title">
-        {t.dashboard}
-      </h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-4xl font-bold" data-testid="text-page-title">
+          {t.dashboard}
+        </h1>
+        <Badge variant="outline" className="flex items-center gap-2" data-testid="badge-current-user">
+          <User className="h-3 w-3" />
+          {t.loggedInAs}: {currentUser}
+        </Badge>
+      </div>
 
       <Tabs defaultValue="article" className="w-full">
         <TabsList className="mb-6">
@@ -322,5 +335,13 @@ export default function Dashboard() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
   );
 }
