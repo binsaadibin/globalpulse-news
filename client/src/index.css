@@ -43,7 +43,9 @@
   --chart-3: 25 85% 45%;
   --chart-4: 280 75% 42%;
   --chart-5: 150 70% 38%;
-  --font-sans: Open Sans, sans-serif;
+  --font-sans: 'Noto Sans', sans-serif;
+  --font-arabic: 'Noto Naskh Arabic', serif;
+  --font-urdu: 'Noto Nastaliq Urdu', serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: .5rem;
@@ -168,10 +170,27 @@
 @layer base {
   * {
     @apply border-border;
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  [lang="ar"] {
+    direction: rtl;
+    font-family: 'Noto Naskh Arabic', serif;
+  }
+
+  [lang="ur"] {
+    direction: rtl;
+    font-family: 'Noto Nastaliq Urdu', serif;
+    line-height: 1.8;
+  }
+
+  [lang="en"] {
+    direction: ltr;
+    font-family: 'Noto Sans', sans-serif;
   }
 }
 
