@@ -529,7 +529,11 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     // serveStatic(app); // Commented out for production
   }
 
+  console.log('?? DEBUG: Starting server...');
+  console.log('?? DEBUG: process.env.PORT =', process.env.PORT);
+  console.log('?? DEBUG: NODE_ENV =', process.env.NODE_ENV);
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+  console.log('?? DEBUG: Final port to use =', port);
   httpServer.listen({
     port,
     host: "0.0.0.0",
