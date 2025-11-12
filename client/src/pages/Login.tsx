@@ -49,9 +49,9 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => { // ← Added async
     e.preventDefault();
-    const success = login(username, password);
+    const success = await login(username, password); // ← Added await
     
     if (success) {
       toast({

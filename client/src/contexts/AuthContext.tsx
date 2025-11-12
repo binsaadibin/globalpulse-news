@@ -1,56 +1,101 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 
+interface User {
+  id: string;
+  username: string;
+  role: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  currentUser: string | null;
-  login: (username: string, password: string) => boolean;
+  currentUser: User | null;
+  login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// TODO: Replace with actual backend authentication
-const MOCK_ADMINS = [
-  { username: 'admin1', password: 'admin123' },
-  { username: 'admin2', password: 'admin456' },
-  { username: 'editor1', password: 'editor123' },
-];
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      setIsAuthenticated(true);
-      setCurrentUser(storedUser);
-    }
+    checkAuthStatus();
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    // TODO: Replace with actual API call
-    const admin = MOCK_ADMINS.find(
-      a => a.username === username && a.password === password
-    );
-    
-    if (admin) {
-      setIsAuthenticated(true);
-      setCurrentUser(username);
-      localStorage.setItem('currentUser', username);
-      return true;
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/auth/me', { // ← Add full backend URL
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setCurrentUser(userData);
+        setIsAuthenticated(true);
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('currentUser');
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      localStorage.removeItem('token');
+      localStorage.removeItem('currentUser');
+    } finally {
+      setLoading(false);
     }
-    return false;
+  };
+
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', { // ← Add full backend URL
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        setCurrentUser(data.user);
+        setIsAuthenticated(true);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
   };
 
   const logout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
+    localStorage.removeItem('token');
     localStorage.removeItem('currentUser');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, currentUser, login, logout }}>
+    <AuthContext.Provider value={{ 
+      isAuthenticated, 
+      currentUser, 
+      login, 
+      logout, 
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );

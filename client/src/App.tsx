@@ -8,6 +8,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import FloatingMediaIcons from "@/components/FloatingMediaIcons"; // ← ADD THIS IMPORT
 import Home from "@/pages/Home";
 import Videos from "@/pages/Videos";
 import Dashboard from "@/pages/Dashboard";
@@ -35,6 +36,7 @@ function App() {
             <AuthProvider>
               <div className="flex flex-col min-h-screen">
                 <Header />
+                <FloatingMediaIcons /> {/* ← ADD THIS LINE */}
                 <main className="flex-1">
                   <Router />
                 </main>

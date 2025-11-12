@@ -1,292 +1,493 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import NewsCard from '@/components/NewsCard';
+import ArticleModal from '@/components/ArticleModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Filter } from 'lucide-react';
-import techImage from '@assets/generated_images/Technology_conference_news_image_a9827700.png';
-import businessImage from '@assets/generated_images/Business_news_image_9e644ece.png';
-import sportsImage from '@assets/generated_images/Sports_news_image_d2821d40.png';
-import politicsImage from '@assets/generated_images/Politics_news_image_4610902e.png';
-import environmentImage from '@assets/generated_images/Environment_news_image_730d691a.png';
-import healthImage from '@assets/generated_images/Health_news_image_c0fc43f8.png';
-
-const newsData = {
-  en: [
-    {
-      id: '1',
-      title: 'Global Tech Summit Unveils Revolutionary AI Innovations',
-      description: 'Leading technology companies showcase groundbreaking artificial intelligence advancements at the annual international conference, setting new industry standards.',
-      category: 'Technology',
-      imageUrl: techImage,
-      timeAgo: '2 hours ago',
-    },
-    {
-      id: '2',
-      title: 'International Business Leaders Discuss Economic Growth Strategies',
-      description: 'Top executives from Fortune 500 companies meet to address global economic challenges and explore sustainable growth opportunities.',
-      category: 'Business',
-      imageUrl: businessImage,
-      timeAgo: '4 hours ago',
-    },
-    {
-      id: '3',
-      title: 'Championship Match Draws Record Breaking Crowd',
-      description: 'Historic sports event attracts millions of viewers worldwide as teams compete in thrilling finale match.',
-      category: 'Sports',
-      imageUrl: sportsImage,
-      timeAgo: '5 hours ago',
-    },
-    {
-      id: '4',
-      title: 'World Leaders Convene for International Peace Summit',
-      description: 'Diplomatic efforts intensify as nations gather to address global security concerns and strengthen international cooperation.',
-      category: 'Politics',
-      imageUrl: politicsImage,
-      timeAgo: '6 hours ago',
-    },
-    {
-      id: '5',
-      title: 'Renewable Energy Breakthrough Promises Cleaner Future',
-      description: 'Scientists announce major advancement in sustainable energy technology, offering hope for environmental conservation.',
-      category: 'Environment',
-      imageUrl: environmentImage,
-      timeAgo: '8 hours ago',
-    },
-    {
-      id: '6',
-      title: 'Medical Research Teams Make Breakthrough Discovery',
-      description: 'Innovative healthcare research reveals promising treatment options, marking significant progress in medical science.',
-      category: 'Health',
-      imageUrl: healthImage,
-      timeAgo: '10 hours ago',
-    },
-  ],
-  ar: [
-    {
-      id: '1',
-      title: 'القمة التقنية العالمية تكشف عن ابتكارات ثورية في الذكاء الاصطناعي',
-      description: 'تعرض شركات التكنولوجيا الرائدة تطورات رائدة في الذكاء الاصطناعي في المؤتمر الدولي السنوي، وتضع معايير صناعية جديدة.',
-      category: 'تكنولوجيا',
-      imageUrl: techImage,
-      timeAgo: 'منذ ساعتين',
-    },
-    {
-      id: '2',
-      title: 'قادة الأعمال الدوليون يناقشون استراتيجيات النمو الاقتصادي',
-      description: 'يجتمع كبار المسؤولين التنفيذيين من شركات فورتشن 500 لمعالجة التحديات الاقتصادية العالمية واستكشاف فرص النمو المستدام.',
-      category: 'أعمال',
-      imageUrl: businessImage,
-      timeAgo: 'منذ 4 ساعات',
-    },
-    {
-      id: '3',
-      title: 'مباراة البطولة تجذب جمهوراً قياسياً',
-      description: 'يجذب الحدث الرياضي التاريخي ملايين المشاهدين في جميع أنحاء العالم حيث تتنافس الفرق في مباراة نهائية مثيرة.',
-      category: 'رياضة',
-      imageUrl: sportsImage,
-      timeAgo: 'منذ 5 ساعات',
-    },
-    {
-      id: '4',
-      title: 'قادة العالم يجتمعون لقمة السلام الدولية',
-      description: 'تتكثف الجهود الدبلوماسية حيث تجتمع الدول لمعالجة المخاوف الأمنية العالمية وتعزيز التعاون الدولي.',
-      category: 'سياسة',
-      imageUrl: politicsImage,
-      timeAgo: 'منذ 6 ساعات',
-    },
-    {
-      id: '5',
-      title: 'اختراق في الطاقة المتجددة يعد بمستقبل أنظف',
-      description: 'يعلن العلماء عن تقدم كبير في تكنولوجيا الطاقة المستدامة، مما يوفر الأمل في الحفاظ على البيئة.',
-      category: 'بيئة',
-      imageUrl: environmentImage,
-      timeAgo: 'منذ 8 ساعات',
-    },
-    {
-      id: '6',
-      title: 'فرق البحث الطبي تحقق اكتشافاً رائداً',
-      description: 'يكشف البحث الصحي المبتكر عن خيارات علاجية واعدة، مما يمثل تقدماً كبيراً في العلوم الطبية.',
-      category: 'صحة',
-      imageUrl: healthImage,
-      timeAgo: 'منذ 10 ساعات',
-    },
-  ],
-  ur: [
-    {
-      id: '1',
-      title: 'عالمی ٹیک سمٹ نے مصنوعی ذہانت میں انقلابی ایجادات کا اعلان کیا',
-      description: 'معروف ٹیکنالوجی کمپنیاں سالانہ بین الاقوامی کانفرنس میں مصنوعی ذہانت میں بڑی پیش رفت کا مظاہرہ کرتی ہیں، نئے صنعتی معیارات قائم کرتی ہیں۔',
-      category: 'ٹیکنالوجی',
-      imageUrl: techImage,
-      timeAgo: '2 گھنٹے پہلے',
-    },
-    {
-      id: '2',
-      title: 'بین الاقوامی کاروباری رہنماؤں نے اقتصادی ترقی کی حکمت عملیوں پر بات کی',
-      description: 'فورچن 500 کمپنیوں کے اعلیٰ عہدیدار عالمی معاشی چیلنجوں سے نمٹنے اور پائیدار ترقی کے مواقع تلاش کرنے کے لیے ملتے ہیں۔',
-      category: 'کاروبار',
-      imageUrl: businessImage,
-      timeAgo: '4 گھنٹے پہلے',
-    },
-    {
-      id: '3',
-      title: 'چیمپئن شپ میچ نے ریکارڈ توڑ ہجوم کو اپنی طرف متوجہ کیا',
-      description: 'تاریخی کھیلوں کا ایونٹ دنیا بھر سے لاکھوں ناظرین کو اپنی طرف متوجہ کرتا ہے جب ٹیمیں سنسنی خیز فائنل میچ میں مقابلہ کرتی ہیں۔',
-      category: 'کھیل',
-      imageUrl: sportsImage,
-      timeAgo: '5 گھنٹے پہلے',
-    },
-    {
-      id: '4',
-      title: 'عالمی رہنما بین الاقوامی امن سربراہی اجلاس کے لیے جمع',
-      description: 'سفارتی کوششوں میں تیزی آئی کیونکہ اقوام عالمی سلامتی کے خدشات کو دور کرنے اور بین الاقوامی تعاون کو مضبوط بنانے کے لیے جمع ہوئیں۔',
-      category: 'سیاست',
-      imageUrl: politicsImage,
-      timeAgo: '6 گھنٹے پہلے',
-    },
-    {
-      id: '5',
-      title: 'قابل تجدید توانائی میں پیش رفت صاف مستقبل کا وعدہ',
-      description: 'سائنسدانوں نے پائیدار توانائی کی ٹیکنالوجی میں بڑی پیش رفت کا اعلان کیا، ماحولیاتی تحفظ کی امید فراہم کرتے ہوئے۔',
-      category: 'ماحولیات',
-      imageUrl: environmentImage,
-      timeAgo: '8 گھنٹے پہلے',
-    },
-    {
-      id: '6',
-      title: 'طبی تحقیقی ٹیموں نے بڑی دریافت کی',
-      description: 'اختراعی صحت کی تحقیق نے امید افزا علاج کے اختیارات کا انکشاف کیا، جو طبی سائنس میں نمایاں پیش رفت کی نشاندہی کرتا ہے۔',
-      category: 'صحت',
-      imageUrl: healthImage,
-      timeAgo: '10 گھنٹے پہلے',
-    },
-  ],
-};
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Search, Filter, TrendingUp, Star, Calendar, Users, ArrowRight, BookOpen, Eye, Clock, RefreshCw } from 'lucide-react';
 
 const translations = {
-  en: { topNews: 'Top News', featured: 'Featured', search: 'Search articles...', filter: 'Filter by category', all: 'All', noResults: 'No articles found' },
-  ar: { topNews: 'أهم الأخبار', featured: 'مميز', search: 'ابحث عن المقالات...', filter: 'تصفية حسب الفئة', all: 'الكل', noResults: 'لم يتم العثور على مقالات' },
-  ur: { topNews: 'اہم خبریں', featured: 'نمایاں', search: 'مضامین تلاش کریں...', filter: 'زمرے کے لحاظ سے فلٹر کریں', all: 'تمام', noResults: 'کوئی مضمون نہیں ملا' },
+  en: { 
+    topNews: 'Top News', 
+    featured: 'Featured', 
+    trending: 'Trending',
+    latest: 'Latest',
+    popular: 'Popular',
+    search: 'Search articles...', 
+    filter: 'Filter by category', 
+    all: 'All', 
+    noResults: 'No articles found',
+    loading: 'Loading articles...',
+    readMore: 'Read More',
+    seeAll: 'See All',
+    breakingNews: 'Breaking News',
+    topStories: 'Top Stories',
+    featuredArticle: 'Featured Article',
+    minutesRead: 'min read',
+    views: 'views',
+    totalArticles: 'Total Articles',
+    dailyViews: 'Daily Views',
+    readers: 'Readers',
+    updated: 'Updated',
+    technology: 'Technology',
+    business: 'Business',
+    sports: 'Sports',
+    politics: 'Politics',
+    environment: 'Environment',
+    health: 'Health',
+    refresh: 'Refresh',
+    tryAgain: 'Try Again'
+  },
+  ar: { 
+    topNews: 'أهم الأخبار', 
+    featured: 'مميز', 
+    trending: 'الشائع',
+    latest: 'الأحدث',
+    popular: 'الأكثر شهرة',
+    search: 'ابحث عن المقالات...', 
+    filter: 'تصفية حسب الفئة', 
+    all: 'الكل', 
+    noResults: 'لم يتم العثور على مقالات',
+    loading: 'جاري تحميل المقالات...',
+    readMore: 'اقرأ المزيد',
+    seeAll: 'عرض الكل',
+    breakingNews: 'أخبار عاجلة',
+    topStories: 'أهم القصص',
+    featuredArticle: 'مقال مميز',
+    minutesRead: 'دقيقة قراءة',
+    views: 'مشاهدة',
+    totalArticles: 'إجمالي المقالات',
+    dailyViews: 'المشاهدات اليومية',
+    readers: 'القراء',
+    updated: 'محدث',
+    technology: 'تكنولوجيا',
+    business: 'أعمال',
+    sports: 'رياضة',
+    politics: 'سياسة',
+    environment: 'بيئة',
+    health: 'صحة',
+    refresh: 'تحديث',
+    tryAgain: 'حاول مرة أخرى'
+  },
+  ur: { 
+    topNews: 'اہم خبریں', 
+    featured: 'نمایاں', 
+    trending: 'مقبول',
+    latest: 'تازہ ترین',
+    popular: 'مشہور',
+    search: 'مضامین تلاش کریں...', 
+    filter: 'زمرے کے لحاظ سے فلٹر کریں', 
+    all: 'تمام', 
+    noResults: 'کوئی مضمون نہیں ملا',
+    loading: 'مضامین لوڈ ہو رہے ہیں...',
+    readMore: 'مزید پڑھیں',
+    seeAll: 'سب دیکھیں',
+    breakingNews: 'بریکنگ نیوز',
+    topStories: 'اہم کہانیاں',
+    featuredArticle: 'نمایاں مضمون',
+    minutesRead: 'منٹ کی قرات',
+    views: 'ویوز',
+    totalArticles: 'کل مضامین',
+    dailyViews: 'روزانہ ویوز',
+    readers: 'قارئین',
+    updated: 'اپ ڈیٹڈ',
+    technology: 'ٹیکنالوجی',
+    business: 'کاروبار',
+    sports: 'کھیل',
+    politics: 'سیاست',
+    environment: 'ماحول',
+    health: 'صحت',
+    refresh: 'ریفریش',
+    tryAgain: 'دوبارہ کوشش کریں'
+  },
 };
 
 export default function Home() {
   const { language } = useLanguage();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedTab, setSelectedTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const news = newsData[language];
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  
   const t = translations[language];
 
-  const filteredNews = useMemo(() => {
-    return news.filter(article => {
+  // Fetch ONLY real articles from backend - NO MOCK DATA
+  const fetchArticles = async () => {
+    try {
+      setLoading(true);
+      setRefreshing(true);
+      setError(null);
+      
+      const response = await fetch('http://localhost:5000/api/articles');
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('📰 Fetched articles from API:', data.length);
+        // Use ONLY the data from API, no mock data
+        setArticles(data);
+      } else {
+        throw new Error('Failed to fetch articles');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching articles:', error);
+      setError('Failed to load articles from server');
+      setArticles([]); // Set empty array instead of mock data
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchArticles();
+  }, []);
+
+  // Helper function to safely extract text
+  const getDisplayText = (textObject: any): string => {
+    if (!textObject) return '';
+    if (typeof textObject === 'string') return textObject;
+    return textObject[language] || textObject.en || textObject.ar || textObject.ur || '';
+  };
+
+  const formatCategory = (cat: string) => {
+    const categoryMap: { [key: string]: string } = {
+      technology: t.technology,
+      business: t.business,
+      sports: t.sports,
+      politics: t.politics,
+      environment: t.environment,
+      health: t.health
+    };
+    return categoryMap[cat] || cat;
+  };
+
+  const filteredArticles = useMemo(() => {
+    let filtered = articles.filter(article => {
+      const articleTitle = getDisplayText(article.title);
+      const articleDescription = getDisplayText(article.description);
+      
       const matchesSearch = searchQuery === '' || 
-        article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.description.toLowerCase().includes(searchQuery.toLowerCase());
+        articleTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        articleDescription.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesCategory = categoryFilter === 'all' || 
-        article.category.toLowerCase() === categoryFilter.toLowerCase();
+        article.category?.toLowerCase() === categoryFilter.toLowerCase();
       
       return matchesSearch && matchesCategory;
     });
-  }, [news, searchQuery, categoryFilter]);
 
-  const handleNewsClick = (newsId: string) => {
-    console.log('News clicked:', newsId);
+    // Apply tab-specific filtering
+    if (selectedTab === 'featured') {
+      filtered = filtered.filter(article => article.featured);
+    } else if (selectedTab === 'popular') {
+      filtered = filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+    }
+
+    return filtered;
+  }, [articles, searchQuery, categoryFilter, selectedTab, language]);
+
+  // Get trending articles (most viewed)
+  const trendingArticles = useMemo(() => {
+    return [...articles]
+      .sort((a, b) => (b.views || 0) - (a.views || 0))
+      .slice(0, 4);
+  }, [articles]);
+
+  const handleReadMore = (article: any) => {
+    setSelectedArticle(article);
+    setIsModalOpen(true);
   };
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8" data-testid="text-page-title">
-        {t.topNews}
-      </h1>
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedArticle(null);
+  };
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder={t.search}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-            data-testid="input-search-articles"
-          />
-        </div>
-        <div className="flex items-center gap-2 min-w-[200px]">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger data-testid="select-filter-category">
-              <SelectValue placeholder={t.filter} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t.all}</SelectItem>
-              <SelectItem value="technology">{language === 'en' ? 'Technology' : language === 'ar' ? 'تكنولوجيا' : 'ٹیکنالوجی'}</SelectItem>
-              <SelectItem value="business">{language === 'en' ? 'Business' : language === 'ar' ? 'أعمال' : 'کاروبار'}</SelectItem>
-              <SelectItem value="sports">{language === 'en' ? 'Sports' : language === 'ar' ? 'رياضة' : 'کھیل'}</SelectItem>
-              <SelectItem value="politics">{language === 'en' ? 'Politics' : language === 'ar' ? 'سياسة' : 'سیاست'}</SelectItem>
-              <SelectItem value="environment">{language === 'en' ? 'Environment' : language === 'ar' ? 'بيئة' : 'ماحولیات'}</SelectItem>
-              <SelectItem value="health">{language === 'en' ? 'Health' : language === 'ar' ? 'صحة' : 'صحت'}</SelectItem>
-            </SelectContent>
-          </Select>
+  const handleSeeAllTrending = () => {
+    setSelectedTab('popular');
+    setCategoryFilter('all');
+    setSearchQuery('');
+    // Scroll to articles section
+    setTimeout(() => {
+      document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handleTabChange = (value: string) => {
+    setSelectedTab(value);
+  };
+
+  // Refresh articles when modal closes (in case of updates)
+  const handleModalClose = () => {
+    closeModal();
+    // Refresh articles to get any updates
+    fetchArticles();
+  };
+
+  const handleRefresh = () => {
+    fetchArticles();
+  };
+
+  if (loading && !refreshing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-96">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-600 mx-auto mb-4"></div>
+              <div className="text-lg text-gray-600 dark:text-gray-300 font-medium">{t.loading}</div>
+            </div>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      <Tabs defaultValue="all" className="mb-8" onValueChange={setSelectedCategory}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="all" data-testid="tab-all">
-            {t.all}
-          </TabsTrigger>
-          <TabsTrigger value="featured" data-testid="tab-featured">
-            {t.featured}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="mt-0">
-          {filteredNews.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground" data-testid="text-no-results">{t.noResults}</p>
+  if (error && articles.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-3xl p-8 max-w-md mx-auto border border-gray-200 dark:border-gray-700 shadow-lg">
+              <p className="text-red-500 text-lg font-medium mb-4">{error}</p>
+              <Button 
+                onClick={fetchArticles}
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 active:scale-95"
+                size="lg"
+              >
+                <RefreshCw className="h-5 w-5 mr-2" />
+                {t.tryAgain}
+              </Button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredNews.map((article) => (
-                <NewsCard
-                  key={article.id}
-                  title={article.title}
-                  description={article.description}
-                  category={article.category}
-                  imageUrl={article.imageUrl}
-                  timeAgo={article.timeAgo}
-                  onClick={() => handleNewsClick(article.id)}
-                />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+        {/* Header Section - Removed Breaking News Badge */}
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 leading-tight">
+            {t.topNews}
+          </h1>
+          <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-light px-2">
+            {language === 'ar' 
+              ? 'ابق على اطلاع بأحدث الأخبار والقصص من جميع أنحاء العالم'
+              : language === 'ur'
+              ? 'دنیا بھر کی تازہ ترین خبروں اور کہانیوں سے باخبر رہیں'
+              : 'Stay informed with the latest news and stories from around the world'
+            }
+          </p>
+        </div>
+
+        {/* Refresh Button */}
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            variant="outline"
+            className="border-gray-600 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 font-semibold rounded-lg px-4 sm:px-6 py-2 transition-all duration-300 active:scale-95"
+            size="sm"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? t.loading : t.refresh}
+          </Button>
+        </div>
+
+        {/* Search and Filter Section - Always in one line */}
+        <div className="flex flex-row gap-2 sm:gap-4 mb-8 sm:mb-12 items-center">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="search"
+              placeholder={t.search}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 focus:border-gray-500 rounded-lg transition-all duration-300 bg-white dark:bg-gray-800 w-full"
+            />
+          </div>
+          <div className="flex items-center gap-2 min-w-[140px] sm:min-w-[160px]">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="border border-gray-300 dark:border-gray-600 focus:border-gray-500 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 transition-all duration-300 w-full">
+                <SelectValue placeholder={t.filter} />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg border border-gray-300 dark:border-gray-600 shadow-lg bg-white dark:bg-gray-800 max-h-60">
+                <SelectItem value="all" className="text-sm py-2">{t.all}</SelectItem>
+                <SelectItem value="technology" className="text-sm py-2">🚀 {t.technology}</SelectItem>
+                <SelectItem value="business" className="text-sm py-2">💼 {t.business}</SelectItem>
+                <SelectItem value="sports" className="text-sm py-2">⚽ {t.sports}</SelectItem>
+                <SelectItem value="politics" className="text-sm py-2">🏛️ {t.politics}</SelectItem>
+                <SelectItem value="environment" className="text-sm py-2">🌱 {t.environment}</SelectItem>
+                <SelectItem value="health" className="text-sm py-2">❤️ {t.health}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-12">
+          {[
+            { icon: BookOpen, color: 'text-gray-600', value: `${articles.length}+`, label: t.totalArticles },
+            { icon: Eye, color: 'text-gray-600', value: '15K+', label: t.dailyViews },
+            { icon: Users, color: 'text-gray-600', value: '50K+', label: t.readers },
+            { icon: Clock, color: 'text-gray-600', value: '24/7', label: t.updated }
+          ].map((stat, index) => (
+            <div key={index} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+              <stat.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${stat.color} mx-auto mb-1 sm:mb-2`} />
+              <div className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white">{stat.value}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-300">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Trending Section */}
+        {trendingArticles.length > 0 && (
+          <div className="mb-8 sm:mb-12">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-gray-600" />
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{t.trending}</h2>
+              </div>
+              <Button 
+                onClick={handleSeeAllTrending}
+                variant="outline"
+                className="border-gray-600 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 font-medium rounded-lg px-3 sm:px-4 py-1.5 transition-all duration-300 active:scale-95 w-full sm:w-auto text-sm"
+                size="sm"
+              >
+                {t.seeAll}
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+              {trendingArticles.map((article) => (
+                <div 
+                  key={article._id} 
+                  className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700 group cursor-pointer active:scale-95"
+                  onClick={() => handleReadMore(article)}
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    {article.imageUrl ? (
+                      <img 
+                        src={article.imageUrl} 
+                        alt={getDisplayText(article.title)}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center">
+                        <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-white opacity-80" />
+                      </div>
+                    )}
+                    <div className="absolute top-2 left-2">
+                      <Badge className="bg-white/90 backdrop-blur-sm text-gray-800 text-xs font-medium">
+                        {formatCategory(article.category)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <h3 className="font-medium text-sm line-clamp-2 mb-2 text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
+                      {getDisplayText(article.title)}
+                    </h3>
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center">
+                        <Eye className="h-3 w-3 mr-1" />
+                        {article.views || 0} {t.views}
+                      </div>
+                      <div>{article.readTime || '5 min read'}</div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
-          )}
-        </TabsContent>
+          </div>
+        )}
 
-        <TabsContent value="featured" className="mt-0">
-          {filteredNews.slice(0, 3).length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">{t.noResults}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredNews.slice(0, 3).map((article) => (
-                <NewsCard
-                  key={article.id}
-                  title={article.title}
-                  description={article.description}
-                  category={article.category}
-                  imageUrl={article.imageUrl}
-                  timeAgo={article.timeAgo}
-                  onClick={() => handleNewsClick(article.id)}
-                />
+        {/* Main Content Tabs */}
+        <div id="articles-section">
+          <Tabs value={selectedTab} onValueChange={handleTabChange} className="mb-6 sm:mb-8">
+            <TabsList className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg sm:rounded-xl p-1 mb-6 sm:mb-8 flex flex-wrap sm:flex-nowrap">
+              {[
+                { value: 'all', label: t.all, icon: null },
+                { value: 'featured', label: t.featured, icon: Star },
+                { value: 'popular', label: t.popular, icon: TrendingUp }
+              ].map((tab) => (
+                <TabsTrigger 
+                  key={tab.value}
+                  value={tab.value} 
+                  className="data-[state=active]:bg-gray-900 data-[state=active]:text-white rounded-md sm:rounded-lg px-3 sm:px-4 py-2 font-medium transition-all duration-300 flex-1 text-xs sm:text-sm m-0.5"
+                >
+                  {tab.icon && <tab.icon className="h-3 w-3 sm:h-3 sm:w-3 mr-1" />}
+                  {tab.label}
+                </TabsTrigger>
               ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+            </TabsList>
+
+            {['all', 'featured', 'popular'].map((tabValue) => (
+              <TabsContent key={tabValue} value={tabValue} className="mt-0">
+                {filteredArticles.length === 0 ? (
+                  <div className="text-center py-8 sm:py-12">
+                    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg sm:rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-700 max-w-md mx-auto">
+                      {tabValue === 'featured' ? (
+                        <Star className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 mx-auto mb-3" />
+                      ) : tabValue === 'popular' ? (
+                        <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 mx-auto mb-3" />
+                      ) : (
+                        <Search className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 mx-auto mb-3" />
+                      )}
+                      <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base mb-2">{t.noResults}</p>
+                      {articles.length > 0 && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {language === 'ar' 
+                            ? 'حاول تغيير معايير البحث أو التصفية'
+                            : language === 'ur'
+                            ? 'اپنے سرچ یا فلٹر کے معیارات کو تبدیل کرنے کی کوشش کریں'
+                            : 'Try changing your search or filter criteria'
+                          }
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    {filteredArticles.map((article) => (
+                      <NewsCard
+                        key={article._id}
+                        title={getDisplayText(article.title)}
+                        description={getDisplayText(article.description)}
+                        category={formatCategory(article.category)}
+                        imageUrl={article.imageUrl}
+                        timeAgo={new Date(article.createdAt).toLocaleDateString()}
+                        views={article.views || 0}
+                        readTime={article.readTime || '5 min read'}
+                        onReadMore={() => handleReadMore(article)}
+                        compact={true}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
+        </div>
+
+        {/* Article Modal */}
+        <ArticleModal
+          article={selectedArticle}
+          isOpen={isModalOpen}
+          onClose={handleModalClose}
+          language={language}
+        />
+      </div>
     </div>
   );
 }
