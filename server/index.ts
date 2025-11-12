@@ -502,7 +502,7 @@ app.use((req, res, next) => {
       }
 
       if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+        logLine = logLine.slice(0, 79) + "ï¿½";
       }
 
       log(logLine);
@@ -529,10 +529,10 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     // serveStatic(app); // Commented out for production
   }
 
-  const port = parseInt(process.env.PORT || '5000', 10);
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
   httpServer.listen({
     port,
-    host: "127.0.0.1",
+    host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port}`);
   });
