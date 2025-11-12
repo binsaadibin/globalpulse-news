@@ -1,9 +1,8 @@
-import express, { type Request, Response, NextFunction } from 'express';
-import { createServer, type Server } from 'http';
-import { setupVite, serveStatic, log } from './vite';
+import express, { type Request, Response, NextFunction } from "express";
+import { createServer, type Server } from "http";
+import { setupVite, serveStatic, log } from "./vite";
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
-import cors from 'cors';
 
 const app = express();
 
@@ -11,28 +10,18 @@ const app = express();
 const connectDB = async () => {
   try {
     await mongoose.connect('mongodb://127.0.0.1:27017/newsapp');
-    console.log(\? MongoDB Connected\);
+    console.log(`? MongoDB Connected`);
   } catch (error) {
-    console.log('? MongoDB not running - using mock authentication');
+    console.log('?? MongoDB not running - using mock authentication');
   }
 };
 connectDB();
 
 // CORS headers
 app.use((req, res, next) => {
-  const allowedOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
-  const origin = req.headers.origin;
-  
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
+  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
   next();
 });
 
@@ -49,15 +38,502 @@ const MOCK_USERS = [
 // Simple in-memory storage (replace with database later)
 let articlesStorage: any[] = [
   {
-    id: '1',
-    title: 'Global Climate Summit Reaches New Agreement',
-    summary: 'World leaders unite on climate action with historic agreement...',
-    content: 'Full article content about the climate summit...',
-    category: 'politics',
-    imageUrl: '/api/placeholder/400/200',
-    date: '2024-01-15',
-    author: 'Global News Desk'
+    _id: '1',
+    title: {
+      en: 'Welcome to Global News Dashboard',
+      ar: '?????? ??? ?? ???? ????? ????????',
+      ur: '????? ???? ??? ???? ??? ??? ?????'
+    },
+    description: {
+      en: 'This is your news platform where you can create and manage multilingual content',
+      ar: '??? ?? ?????? ????????? ??? ?????? ????? ?????? ??????? ????? ??????',
+      ur: '?? ?? ?? ???? ???? ???? ?? ???? ?? ???? ????? ???? ????? ??? ???? ?? ???? ???'
+    },
+    category: 'technology',
+    imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop',
+    status: 'published',
+    createdBy: '1',
+    createdByUsername: 'admin1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   }
 ];
 
-    _id: '1',     title: {       en: 'Welcome to Global News Dashboard',       ar: 'مرحبًا بكم في لوحة أخبار العالمية',       ur: 'گلوبل نیوز ڈیش بورڈ میں خوش آمدید'     },     description: {       en: 'This is your news platform where you can create and manage multilingual content',       ar: 'هذه هي منصتكم الإخبارية حيث يمكنكم إنشاء وإدارة المحتوى متعدد اللغات',       ur: 'یہ آپ کا نیوز پلیٹ فارم ہے جہاں آپ کثیر لسانی مواد تخلیق اور منظم کر سکتے ہیں'     },     category: 'technology',     imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop',     status: 'published',     createdBy: '1',     createdByUsername: 'admin1',     createdAt: new Date().toISOString(),     updatedAt: new Date().toISOString(),   } ];  let videosStorage: any[] = [   {     _id: '1',     title: {       en: 'Welcome Video Tutorial',       ar: 'فيديو تعريفي ترحيبي',       ur: 'خوش آمدید ویڈیو ٹیوٹوریل'     },     description: {       en: 'Learn how to use the Global News Dashboard platform',       ar: 'تعلم كيفية استخدام منصة لوحة أخبار العالمية',       ur: 'گلوبل نیوز ڈیش بورڈ پلیٹ فارم کا استعمال کیسے کریں'     },     platform: 'youtube',     videoUrl: 'https://www.youtube.com/watch?v=example',     status: 'published',     createdBy: '1',     createdByUsername: 'admin1',     createdAt: new Date().toISOString(),     updatedAt: new Date().toISOString(),   } ];  // AUTH ROUTES app.post('/api/auth/login', (req, res) => {   try {     const { username, password } = req.body;     console.log('🔐 Login attempt:', username);      const user = MOCK_USERS.find(u => u.username === username && u.password === password);          if (!user) {       console.log('❌ Invalid credentials for:', username);       return res.status(401).json({ message: 'Invalid credentials' });     }      const token = jwt.sign({ userId: user.id }, 'fallback_secret', { expiresIn: '24h' });      console.log('✅ Login successful for:', username);     res.json({       token,       user: { id: user.id, username: user.username, role: user.role },     });   } catch (error) {     console.error('Login error:', error);     res.status(500).json({ message: 'Server error' });   } });  app.get('/api/auth/me', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;     const user = MOCK_USERS.find(u => u.id === decoded.userId);          if (!user) {       return res.status(401).json({ message: 'User not found' });     }      res.json({ id: user.id, username: user.username, role: user.role });   } catch (error) {     res.status(401).json({ message: 'Invalid token' });   } });  // ARTICLES API ROUTES  // Get all published articles (for home page) app.get('/api/articles', (req, res) => {   try {     console.log('📰 Fetching published articles for home page');          // Return only published articles     const publishedArticles = articlesStorage.filter(article => article.status === 'published');     console.log('📊 Returning', publishedArticles.length, 'published articles');          res.json(publishedArticles);   } catch (error) {     console.error('Get articles error:', error);     res.status(500).json({ message: 'Server error' });   } });  // Create article app.post('/api/articles', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;     const user = MOCK_USERS.find(u => u.id === decoded.userId);          if (!user) {       return res.status(401).json({ message: 'Invalid token' });     }      console.log('📝 Creating article by:', user.username);     console.log('Article data:', req.body);      const article = {       _id: Date.now().toString(),       ...req.body,       createdBy: user.id,       createdByUsername: user.username,       createdAt: new Date().toISOString(),       updatedAt: new Date().toISOString(),     };      // Save to storage     articlesStorage.push(article);     console.log('💾 Article saved. Total articles:', articlesStorage.length);     console.log('📊 Article status:', article.status);      res.json({       success: true,       message: `Article ${article.status === 'draft' ? 'saved as draft' : 'published'} successfully`,       article: article     });   } catch (error) {     console.error('Create article error:', error);     res.status(500).json({ message: 'Server error' });   } });  // Get user's articles for dashboard app.get('/api/articles/my-articles', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;          console.log('📚 Fetching articles for user:', decoded.userId);          // Return user's articles     const userArticles = articlesStorage.filter(article => article.createdBy === decoded.userId);     res.json(userArticles);   } catch (error) {     res.status(401).json({ message: 'Invalid token' });   } });  // Update article app.put('/api/articles/:id', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;     const user = MOCK_USERS.find(u => u.id === decoded.userId);          if (!user) {       return res.status(401).json({ message: 'Invalid token' });     }      const articleId = req.params.id;     console.log('✏️ Updating article:', articleId);     console.log('Update data:', req.body);      // Find article index     const articleIndex = articlesStorage.findIndex(article =>        article._id === articleId && article.createdBy === user.id     );      if (articleIndex === -1) {       return res.status(404).json({ message: 'Article not found' });     }      // Update article     articlesStorage[articleIndex] = {       ...articlesStorage[articleIndex],       ...req.body,       updatedAt: new Date().toISOString(),     };      console.log('✅ Article updated successfully');     console.log('📊 Article status:', articlesStorage[articleIndex].status);      res.json({       success: true,       message: `Article ${articlesStorage[articleIndex].status === 'draft' ? 'draft updated' : 'updated and published'} successfully`,       article: articlesStorage[articleIndex]     });   } catch (error) {     console.error('Update article error:', error);     res.status(500).json({ message: 'Server error' });   } });  // Delete article app.delete('/api/articles/:id', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;     const user = MOCK_USERS.find(u => u.id === decoded.userId);          if (!user) {       return res.status(401).json({ message: 'Invalid token' });     }      const articleId = req.params.id;     console.log('🗑️ Deleting article:', articleId);      // Find article index     const articleIndex = articlesStorage.findIndex(article =>        article._id === articleId && article.createdBy === user.id     );      if (articleIndex === -1) {       return res.status(404).json({ message: 'Article not found' });     }      // Remove article     const deletedArticle = articlesStorage.splice(articleIndex, 1)[0];     console.log('✅ Article deleted. Total articles:', articlesStorage.length);      res.json({       success: true,       message: 'Article deleted successfully',       article: deletedArticle     });   } catch (error) {     console.error('Delete article error:', error);     res.status(500).json({ message: 'Server error' });   } });  // VIDEOS API ROUTES  // Get all published videos app.get('/api/videos', (req, res) => {   try {     console.log('🎬 Fetching published videos for videos page');          // Return only published videos     const publishedVideos = videosStorage.filter(video => video.status === 'published');     console.log('📊 Returning', publishedVideos.length, 'published videos');          res.json(publishedVideos);   } catch (error) {     console.error('Get videos error:', error);     res.status(500).json({ message: 'Server error' });   } });  // Create video app.post('/api/videos', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;     const user = MOCK_USERS.find(u => u.id === decoded.userId);          if (!user) {       return res.status(401).json({ message: 'Invalid token' });     }      console.log('🎥 Creating video by:', user.username);     console.log('Video data:', req.body);      const video = {       _id: Date.now().toString(),       ...req.body,       createdBy: user.id,       createdByUsername: user.username,       createdAt: new Date().toISOString(),       updatedAt: new Date().toISOString(),     };      // Save to storage     videosStorage.push(video);     console.log('💾 Video saved. Total videos:', videosStorage.length);     console.log('📊 Video status:', video.status);      res.json({       success: true,       message: `Video ${video.status === 'draft' ? 'saved as draft' : 'published'} successfully`,       video: video     });   } catch (error) {     console.error('Create video error:', error);     res.status(500).json({ message: 'Server error' });   } });  // Get user's videos for dashboard app.get('/api/videos/my-videos', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;          console.log('📹 Fetching videos for user:', decoded.userId);          // Return user's videos     const userVideos = videosStorage.filter(video => video.createdBy === decoded.userId);     res.json(userVideos);   } catch (error) {     res.status(401).json({ message: 'Invalid token' });   } });  // Update video app.put('/api/videos/:id', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;     const user = MOCK_USERS.find(u => u.id === decoded.userId);          if (!user) {       return res.status(401).json({ message: 'Invalid token' });     }      const videoId = req.params.id;     console.log('✏️ Updating video:', videoId);     console.log('Update data:', req.body);      // Find video index     const videoIndex = videosStorage.findIndex(video =>        video._id === videoId && video.createdBy === user.id     );      if (videoIndex === -1) {       return res.status(404).json({ message: 'Video not found' });     }      // Update video     videosStorage[videoIndex] = {       ...videosStorage[videoIndex],       ...req.body,       updatedAt: new Date().toISOString(),     };      console.log('✅ Video updated successfully');     console.log('📊 Video status:', videosStorage[videoIndex].status);      res.json({       success: true,       message: `Video ${videosStorage[videoIndex].status === 'draft' ? 'draft updated' : 'updated and published'} successfully`,       video: videosStorage[videoIndex]     });   } catch (error) {     console.error('Update video error:', error);     res.status(500).json({ message: 'Server error' });   } });  // Delete video app.delete('/api/videos/:id', (req, res) => {   try {     const token = req.header('Authorization')?.replace('Bearer ', '');          if (!token) {       return res.status(401).json({ message: 'No token provided' });     }      const decoded = jwt.verify(token, 'fallback_secret') as any;     const user = MOCK_USERS.find(u => u.id === decoded.userId);          if (!user) {       return res.status(401).json({ message: 'Invalid token' });     }      const videoId = req.params.id;     console.log('🗑️ Deleting video:', videoId);      // Find video index     const videoIndex = videosStorage.findIndex(video =>        video._id === videoId && video.createdBy === user.id     );      if (videoIndex === -1) {       return res.status(404).json({ message: 'Video not found' });     }      // Remove video     const deletedVideo = videosStorage.splice(videoIndex, 1)[0];     console.log('✅ Video deleted. Total videos:', videosStorage.length);      res.json({       success: true,       message: 'Video deleted successfully',       video: deletedVideo     });   } catch (error) {     console.error('Delete video error:', error);     res.status(500).json({ message: 'Server error' });   } });  // Logging middleware app.use((req, res, next) => {   const start = Date.now();   const path = req.path;   let capturedJsonResponse: Record<string, any> | undefined = undefined;    const originalResJson = res.json;   res.json = function (bodyJson, ...args) {     capturedJsonResponse = bodyJson;     return originalResJson.apply(res, [bodyJson, ...args]);   };    res.on("finish", () => {     const duration = Date.now() - start;     if (path.startsWith("/api")) {       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;       if (capturedJsonResponse) {         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;       }        if (logLine.length > 80) {         logLine = logLine.slice(0, 79) + "…";       }        log(logLine);     }   });    next(); });  const httpServer = createServer(app);  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {   const status = err.status || err.statusCode || 500;   const message = err.message || "Internal Server Error";    res.status(status).json({ message });   throw err; });  (async () => {   if (app.get("env") === "development") {     await setupVite(app, httpServer);   } else {     // serveStatic(app); // Commented out for production   }    const port = parseInt(process.env.PORT || '5000', 10);   httpServer.listen({     port,     host: "127.0.0.1",   }, () => {     log(`serving on port ${port}`);   }); })();
+let videosStorage: any[] = [
+  {
+    _id: '1',
+    title: {
+      en: 'Welcome Video Tutorial',
+      ar: '????? ?????? ??????',
+      ur: '??? ????? ????? ????????'
+    },
+    description: {
+      en: 'Learn how to use the Global News Dashboard platform',
+      ar: '???? ????? ??????? ???? ???? ????? ????????',
+      ur: '????? ???? ??? ???? ???? ???? ?? ??????? ???? ????'
+    },
+    platform: 'youtube',
+    videoUrl: 'https://www.youtube.com/watch?v=example',
+    status: 'published',
+    createdBy: '1',
+    createdByUsername: 'admin1',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+];
+
+// AUTH ROUTES
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { username, password } = req.body;
+    console.log('?? Login attempt:', username);
+
+    const user = MOCK_USERS.find(u => u.username === username && u.password === password);
+    
+    if (!user) {
+      console.log('? Invalid credentials for:', username);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign({ userId: user.id }, 'fallback_secret', { expiresIn: '24h' });
+
+    console.log('? Login successful for:', username);
+    res.json({
+      token,
+      user: { id: user.id, username: user.username, role: user.role },
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/auth/me', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    res.json({ id: user.id, username: user.username, role: user.role });
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+});
+
+// ARTICLES API ROUTES
+
+// Get all published articles (for home page)
+app.get('/api/articles', (req, res) => {
+  try {
+    console.log('?? Fetching published articles for home page');
+    
+    // Return only published articles
+    const publishedArticles = articlesStorage.filter(article => article.status === 'published');
+    console.log('?? Returning', publishedArticles.length, 'published articles');
+    
+    res.json(publishedArticles);
+  } catch (error) {
+    console.error('Get articles error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create article
+app.post('/api/articles', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    console.log('?? Creating article by:', user.username);
+    console.log('Article data:', req.body);
+
+    const article = {
+      _id: Date.now().toString(),
+      ...req.body,
+      createdBy: user.id,
+      createdByUsername: user.username,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Save to storage
+    articlesStorage.push(article);
+    console.log('?? Article saved. Total articles:', articlesStorage.length);
+    console.log('?? Article status:', article.status);
+
+    res.json({
+      success: true,
+      message: `Article ${article.status === 'draft' ? 'saved as draft' : 'published'} successfully`,
+      article: article
+    });
+  } catch (error) {
+    console.error('Create article error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user's articles for dashboard
+app.get('/api/articles/my-articles', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    
+    console.log('?? Fetching articles for user:', decoded.userId);
+    
+    // Return user's articles
+    const userArticles = articlesStorage.filter(article => article.createdBy === decoded.userId);
+    res.json(userArticles);
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+});
+
+// Update article
+app.put('/api/articles/:id', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    const articleId = req.params.id;
+    console.log('?? Updating article:', articleId);
+    console.log('Update data:', req.body);
+
+    // Find article index
+    const articleIndex = articlesStorage.findIndex(article => 
+      article._id === articleId && article.createdBy === user.id
+    );
+
+    if (articleIndex === -1) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    // Update article
+    articlesStorage[articleIndex] = {
+      ...articlesStorage[articleIndex],
+      ...req.body,
+      updatedAt: new Date().toISOString(),
+    };
+
+    console.log('? Article updated successfully');
+    console.log('?? Article status:', articlesStorage[articleIndex].status);
+
+    res.json({
+      success: true,
+      message: `Article ${articlesStorage[articleIndex].status === 'draft' ? 'draft updated' : 'updated and published'} successfully`,
+      article: articlesStorage[articleIndex]
+    });
+  } catch (error) {
+    console.error('Update article error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete article
+app.delete('/api/articles/:id', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    const articleId = req.params.id;
+    console.log('??? Deleting article:', articleId);
+
+    // Find article index
+    const articleIndex = articlesStorage.findIndex(article => 
+      article._id === articleId && article.createdBy === user.id
+    );
+
+    if (articleIndex === -1) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+
+    // Remove article
+    const deletedArticle = articlesStorage.splice(articleIndex, 1)[0];
+    console.log('? Article deleted. Total articles:', articlesStorage.length);
+
+    res.json({
+      success: true,
+      message: 'Article deleted successfully',
+      article: deletedArticle
+    });
+  } catch (error) {
+    console.error('Delete article error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// VIDEOS API ROUTES
+
+// Get all published videos
+app.get('/api/videos', (req, res) => {
+  try {
+    console.log('?? Fetching published videos for videos page');
+    
+    // Return only published videos
+    const publishedVideos = videosStorage.filter(video => video.status === 'published');
+    console.log('?? Returning', publishedVideos.length, 'published videos');
+    
+    res.json(publishedVideos);
+  } catch (error) {
+    console.error('Get videos error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create video
+app.post('/api/videos', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    console.log('?? Creating video by:', user.username);
+    console.log('Video data:', req.body);
+
+    const video = {
+      _id: Date.now().toString(),
+      ...req.body,
+      createdBy: user.id,
+      createdByUsername: user.username,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Save to storage
+    videosStorage.push(video);
+    console.log('?? Video saved. Total videos:', videosStorage.length);
+    console.log('?? Video status:', video.status);
+
+    res.json({
+      success: true,
+      message: `Video ${video.status === 'draft' ? 'saved as draft' : 'published'} successfully`,
+      video: video
+    });
+  } catch (error) {
+    console.error('Create video error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user's videos for dashboard
+app.get('/api/videos/my-videos', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    
+    console.log('?? Fetching videos for user:', decoded.userId);
+    
+    // Return user's videos
+    const userVideos = videosStorage.filter(video => video.createdBy === decoded.userId);
+    res.json(userVideos);
+  } catch (error) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+});
+
+// Update video
+app.put('/api/videos/:id', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    const videoId = req.params.id;
+    console.log('?? Updating video:', videoId);
+    console.log('Update data:', req.body);
+
+    // Find video index
+    const videoIndex = videosStorage.findIndex(video => 
+      video._id === videoId && video.createdBy === user.id
+    );
+
+    if (videoIndex === -1) {
+      return res.status(404).json({ message: 'Video not found' });
+    }
+
+    // Update video
+    videosStorage[videoIndex] = {
+      ...videosStorage[videoIndex],
+      ...req.body,
+      updatedAt: new Date().toISOString(),
+    };
+
+    console.log('? Video updated successfully');
+    console.log('?? Video status:', videosStorage[videoIndex].status);
+
+    res.json({
+      success: true,
+      message: `Video ${videosStorage[videoIndex].status === 'draft' ? 'draft updated' : 'updated and published'} successfully`,
+      video: videosStorage[videoIndex]
+    });
+  } catch (error) {
+    console.error('Update video error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete video
+app.delete('/api/videos/:id', (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+
+    const videoId = req.params.id;
+    console.log('??? Deleting video:', videoId);
+
+    // Find video index
+    const videoIndex = videosStorage.findIndex(video => 
+      video._id === videoId && video.createdBy === user.id
+    );
+
+    if (videoIndex === -1) {
+      return res.status(404).json({ message: 'Video not found' });
+    }
+
+    // Remove video
+    const deletedVideo = videosStorage.splice(videoIndex, 1)[0];
+    console.log('? Video deleted. Total videos:', videosStorage.length);
+
+    res.json({
+      success: true,
+      message: 'Video deleted successfully',
+      video: deletedVideo
+    });
+  } catch (error) {
+    console.error('Delete video error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "�";
+      }
+
+      log(logLine);
+    }
+  });
+
+  next();
+});
+
+const httpServer = createServer(app);
+
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+
+  res.status(status).json({ message });
+  throw err;
+});
+
+(async () => {
+  if (app.get("env") === "development") {
+    await setupVite(app, httpServer);
+  } else {
+    // serveStatic(app); // Commented out for production
+  }
+
+  const port = parseInt(process.env.PORT || '5000', 10);
+  httpServer.listen({
+    port,
+    host: "127.0.0.1",
+  }, () => {
+    log(`serving on port ${port}`);
+  });
+})();
