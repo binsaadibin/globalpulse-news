@@ -10,18 +10,33 @@ const app = express();
 const connectDB = async () => {
   try {
     await mongoose.connect('mongodb://127.0.0.1:27017/newsapp');
-    console.log(`? MongoDB Connected`);
+    console.log(`✅ MongoDB Connected`);
   } catch (error) {
-    console.log('?? MongoDB not running - using mock authentication');
+    console.log('⚠️ MongoDB not running - using mock authentication');
   }
 };
 connectDB();
 
-// CORS headers
+// CORS headers - Updated for production
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174', 
+    'https://your-app.netlify.app',
+    'https://*.netlify.app'
+  ];
+  const origin = req.headers.origin;
+  
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   next();
 });
 
@@ -41,13 +56,13 @@ let articlesStorage: any[] = [
     _id: '1',
     title: {
       en: 'Welcome to Global News Dashboard',
-      ar: '?????? ??? ?? ???? ????? ????????',
-      ur: '????? ???? ??? ???? ??? ??? ?????'
+      ar: 'مرحبًا بكم في لوحة أخبار العالمية',
+      ur: 'گلوبل نیوز ڈیش بورڈ میں خوش آمدید'
     },
     description: {
       en: 'This is your news platform where you can create and manage multilingual content',
-      ar: '??? ?? ?????? ????????? ??? ?????? ????? ?????? ??????? ????? ??????',
-      ur: '?? ?? ?? ???? ???? ???? ?? ???? ?? ???? ????? ???? ????? ??? ???? ?? ???? ???'
+      ar: 'هذه هي منصتكم الإخبارية حيث يمكنكم إنشاء وإدارة المحتوى متعدد اللغات',
+      ur: 'یہ آپ کا نیوز پلیٹ فارم ہے جہاں آپ کثیر لسانی مواد تخلیق اور منظم کر سکتے ہیں'
     },
     category: 'technology',
     imageUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop',
@@ -64,13 +79,13 @@ let videosStorage: any[] = [
     _id: '1',
     title: {
       en: 'Welcome Video Tutorial',
-      ar: '????? ?????? ??????',
-      ur: '??? ????? ????? ????????'
+      ar: 'فيديو تعريفي ترحيبي',
+      ur: 'خوش آمدید ویڈیو ٹیوٹوریل'
     },
     description: {
       en: 'Learn how to use the Global News Dashboard platform',
-      ar: '???? ????? ??????? ???? ???? ????? ????????',
-      ur: '????? ???? ??? ???? ???? ???? ?? ??????? ???? ????'
+      ar: 'تعلم كيفية استخدام منصة لوحة أخبار العالمية',
+      ur: 'گلوبل نیوز ڈیش بورڈ پلیٹ فارم کا استعمال کیسے کریں'
     },
     platform: 'youtube',
     videoUrl: 'https://www.youtube.com/watch?v=example',
@@ -86,18 +101,18 @@ let videosStorage: any[] = [
 app.post('/api/auth/login', (req, res) => {
   try {
     const { username, password } = req.body;
-    console.log('?? Login attempt:', username);
+    console.log('🔐 Login attempt:', username);
 
     const user = MOCK_USERS.find(u => u.username === username && u.password === password);
     
     if (!user) {
-      console.log('? Invalid credentials for:', username);
+      console.log('❌ Invalid credentials for:', username);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const token = jwt.sign({ userId: user.id }, 'fallback_secret', { expiresIn: '24h' });
 
-    console.log('? Login successful for:', username);
+    console.log('✅ Login successful for:', username);
     res.json({
       token,
       user: { id: user.id, username: user.username, role: user.role },
@@ -134,11 +149,11 @@ app.get('/api/auth/me', (req, res) => {
 // Get all published articles (for home page)
 app.get('/api/articles', (req, res) => {
   try {
-    console.log('?? Fetching published articles for home page');
+    console.log('📰 Fetching published articles for home page');
     
     // Return only published articles
     const publishedArticles = articlesStorage.filter(article => article.status === 'published');
-    console.log('?? Returning', publishedArticles.length, 'published articles');
+    console.log('📊 Returning', publishedArticles.length, 'published articles');
     
     res.json(publishedArticles);
   } catch (error) {
@@ -163,7 +178,7 @@ app.post('/api/articles', (req, res) => {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    console.log('?? Creating article by:', user.username);
+    console.log('📝 Creating article by:', user.username);
     console.log('Article data:', req.body);
 
     const article = {
@@ -177,8 +192,8 @@ app.post('/api/articles', (req, res) => {
 
     // Save to storage
     articlesStorage.push(article);
-    console.log('?? Article saved. Total articles:', articlesStorage.length);
-    console.log('?? Article status:', article.status);
+    console.log('💾 Article saved. Total articles:', articlesStorage.length);
+    console.log('📊 Article status:', article.status);
 
     res.json({
       success: true,
@@ -202,7 +217,7 @@ app.get('/api/articles/my-articles', (req, res) => {
 
     const decoded = jwt.verify(token, 'fallback_secret') as any;
     
-    console.log('?? Fetching articles for user:', decoded.userId);
+    console.log('📚 Fetching articles for user:', decoded.userId);
     
     // Return user's articles
     const userArticles = articlesStorage.filter(article => article.createdBy === decoded.userId);
@@ -229,7 +244,7 @@ app.put('/api/articles/:id', (req, res) => {
     }
 
     const articleId = req.params.id;
-    console.log('?? Updating article:', articleId);
+    console.log('✏️ Updating article:', articleId);
     console.log('Update data:', req.body);
 
     // Find article index
@@ -248,8 +263,8 @@ app.put('/api/articles/:id', (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log('? Article updated successfully');
-    console.log('?? Article status:', articlesStorage[articleIndex].status);
+    console.log('✅ Article updated successfully');
+    console.log('📊 Article status:', articlesStorage[articleIndex].status);
 
     res.json({
       success: true,
@@ -279,7 +294,7 @@ app.delete('/api/articles/:id', (req, res) => {
     }
 
     const articleId = req.params.id;
-    console.log('??? Deleting article:', articleId);
+    console.log('🗑️ Deleting article:', articleId);
 
     // Find article index
     const articleIndex = articlesStorage.findIndex(article => 
@@ -292,7 +307,7 @@ app.delete('/api/articles/:id', (req, res) => {
 
     // Remove article
     const deletedArticle = articlesStorage.splice(articleIndex, 1)[0];
-    console.log('? Article deleted. Total articles:', articlesStorage.length);
+    console.log('✅ Article deleted. Total articles:', articlesStorage.length);
 
     res.json({
       success: true,
@@ -310,11 +325,11 @@ app.delete('/api/articles/:id', (req, res) => {
 // Get all published videos
 app.get('/api/videos', (req, res) => {
   try {
-    console.log('?? Fetching published videos for videos page');
+    console.log('🎬 Fetching published videos for videos page');
     
     // Return only published videos
     const publishedVideos = videosStorage.filter(video => video.status === 'published');
-    console.log('?? Returning', publishedVideos.length, 'published videos');
+    console.log('📊 Returning', publishedVideos.length, 'published videos');
     
     res.json(publishedVideos);
   } catch (error) {
@@ -339,7 +354,7 @@ app.post('/api/videos', (req, res) => {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
-    console.log('?? Creating video by:', user.username);
+    console.log('🎥 Creating video by:', user.username);
     console.log('Video data:', req.body);
 
     const video = {
@@ -353,8 +368,8 @@ app.post('/api/videos', (req, res) => {
 
     // Save to storage
     videosStorage.push(video);
-    console.log('?? Video saved. Total videos:', videosStorage.length);
-    console.log('?? Video status:', video.status);
+    console.log('💾 Video saved. Total videos:', videosStorage.length);
+    console.log('📊 Video status:', video.status);
 
     res.json({
       success: true,
@@ -378,7 +393,7 @@ app.get('/api/videos/my-videos', (req, res) => {
 
     const decoded = jwt.verify(token, 'fallback_secret') as any;
     
-    console.log('?? Fetching videos for user:', decoded.userId);
+    console.log('📹 Fetching videos for user:', decoded.userId);
     
     // Return user's videos
     const userVideos = videosStorage.filter(video => video.createdBy === decoded.userId);
@@ -405,7 +420,7 @@ app.put('/api/videos/:id', (req, res) => {
     }
 
     const videoId = req.params.id;
-    console.log('?? Updating video:', videoId);
+    console.log('✏️ Updating video:', videoId);
     console.log('Update data:', req.body);
 
     // Find video index
@@ -424,8 +439,8 @@ app.put('/api/videos/:id', (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    console.log('? Video updated successfully');
-    console.log('?? Video status:', videosStorage[videoIndex].status);
+    console.log('✅ Video updated successfully');
+    console.log('📊 Video status:', videosStorage[videoIndex].status);
 
     res.json({
       success: true,
@@ -455,7 +470,7 @@ app.delete('/api/videos/:id', (req, res) => {
     }
 
     const videoId = req.params.id;
-    console.log('??? Deleting video:', videoId);
+    console.log('🗑️ Deleting video:', videoId);
 
     // Find video index
     const videoIndex = videosStorage.findIndex(video => 
@@ -468,7 +483,7 @@ app.delete('/api/videos/:id', (req, res) => {
 
     // Remove video
     const deletedVideo = videosStorage.splice(videoIndex, 1)[0];
-    console.log('? Video deleted. Total videos:', videosStorage.length);
+    console.log('✅ Video deleted. Total videos:', videosStorage.length);
 
     res.json({
       success: true,
@@ -502,7 +517,7 @@ app.use((req, res, next) => {
       }
 
       if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "�";
+        logLine = logLine.slice(0, 79) + "…";
       }
 
       log(logLine);
@@ -529,11 +544,11 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     // serveStatic(app); // Commented out for production
   }
 
-  console.log('?? DEBUG: Starting server...');
-  console.log('?? DEBUG: process.env.PORT =', process.env.PORT);
-  console.log('?? DEBUG: NODE_ENV =', process.env.NODE_ENV);
+  console.log('🚀 DEBUG: Starting server...');
+  console.log('🔧 DEBUG: process.env.PORT =', process.env.PORT);
+  console.log('🔧 DEBUG: NODE_ENV =', process.env.NODE_ENV);
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
-  console.log('?? DEBUG: Final port to use =', port);
+  console.log('🎯 DEBUG: Final port to use =', port);
   httpServer.listen({
     port,
     host: "0.0.0.0",
