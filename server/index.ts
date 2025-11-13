@@ -40,6 +40,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root route for Railway health checks
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'GlobalPulse News API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
