@@ -17,19 +17,27 @@ const connectDB = async () => {
 };
 connectDB();
 
-// CORS headers - Updated for production
+// CORS headers - Fixed for production
 app.use((req, res, next) => {
   const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174', 
-    'https://your-app.netlify.app',
+    'https://globalplus.netlify.app', // Your actual Netlify domain
     'https://*.netlify.app'
   ];
   const origin = req.headers.origin;
   
-  if (origin && allowedOrigins.includes(origin)) {
+  // Allow requests from any origin in development, specific origins in production
+  if (process.env.NODE_ENV === 'development' || (origin && allowedOrigins.some(allowed => {
+    if (allowed.includes('*')) {
+      const domain = allowed.replace('*.', '');
+      return origin.endsWith(domain);
+    }
+    return allowed === origin;
+  }))) {
     res.header('Access-Control-Allow-Origin', origin);
   }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
   res.header('Access-Control-Allow-Credentials', 'true');
