@@ -60,9 +60,9 @@ app.use(express.urlencoded({ extended: false }));
 
 // MOCK AUTH ROUTES
 const MOCK_USERS = [
-  { id: '1', username: 'admin1', password: 'admin123', role: 'admin' },
-  { id: '2', username: 'admin2', password: 'admin456', role: 'admin' },
-  { id: '3', username: 'editor1', password: 'editor123', role: 'editor' },
+  { id: '1', username: 'globalplus', password: 'globalplus@4455', role: 'admin' },
+  { id: '2', username: 'globalnews', password: 'globalnews@4455', role: 'admin' },
+  { id: '3', username: 'haroonosmani', password: 'haroon@1324', role: 'editor' },
 ];
 
 // Simple in-memory storage (replace with database later)
