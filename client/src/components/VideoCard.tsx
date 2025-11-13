@@ -65,7 +65,7 @@ export default function VideoCard({
     
     try {
       setIsTrackingView(true);
-      const response = await fetch(`http://localhost:5000/api/videos/${videoId}/view`, {
+      const response = await fetch(`https://globalpulse-news-production-31ee.up.railway.app/api/videos/${videoId}/view`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ export default function VideoCard({
       if (!videoId) return;
       
       try {
-        const response = await fetch(`http://localhost:5000/api/videos/${videoId}/views`);
+        const response = await fetch(`https://globalpulse-news-production-31ee.up.railway.app/api/videos/${videoId}/views`);
         if (response.ok) {
           const result = await response.json();
           setCurrentViews(result.views);

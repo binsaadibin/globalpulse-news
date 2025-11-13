@@ -136,7 +136,7 @@ export default function Videos() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:5000/api/videos');
+      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/videos');
       
       if (response.ok) {
         const data = await response.json();

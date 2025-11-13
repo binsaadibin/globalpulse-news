@@ -234,7 +234,7 @@ function DashboardContent() {
     try {
       console.log('🔄 Fetching user articles...');
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/articles/my-articles', {
+      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/articles/my-articles', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -266,7 +266,7 @@ function DashboardContent() {
     try {
       console.log('🔄 Fetching user videos...');
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/videos/my-videos', {
+      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/videos/my-videos', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -308,8 +308,8 @@ function DashboardContent() {
     try {
       const token = localStorage.getItem('token');
       const url = editingArticle 
-        ? `http://localhost:5000/api/articles/${editingArticle._id}`
-        : 'http://localhost:5000/api/articles';
+        ? `https://globalpulse-news-production-31ee.up.railway.app/api/articles/${editingArticle._id}`
+        : 'https://globalpulse-news-production-31ee.up.railway.app/api/articles';
       
       const method = editingArticle ? 'PUT' : 'POST';
 
@@ -363,8 +363,8 @@ function DashboardContent() {
     try {
       const token = localStorage.getItem('token');
       const url = editingVideo 
-        ? `http://localhost:5000/api/videos/${editingVideo._id}`
-        : 'http://localhost:5000/api/videos';
+        ? `https://globalpulse-news-production-31ee.up.railway.app/api/videos/${editingVideo._id}`
+        : 'https://globalpulse-news-production-31ee.up.railway.app/api/videos';
       
       const method = editingVideo ? 'PUT' : 'POST';
 
@@ -420,8 +420,8 @@ function DashboardContent() {
         }
 
         const url = editingArticle 
-          ? `http://localhost:5000/api/articles/${editingArticle._id}`
-          : 'http://localhost:5000/api/articles';
+          ? `https://globalpulse-news-production-31ee.up.railway.app/api/articles/${editingArticle._id}`
+          : 'https://globalpulse-news-production-31ee.up.railway.app/api/articles';
         
         const method = editingArticle ? 'PUT' : 'POST';
 
@@ -460,8 +460,8 @@ function DashboardContent() {
         }
 
         const url = editingVideo 
-          ? `http://localhost:5000/api/videos/${editingVideo._id}`
-          : 'http://localhost:5000/api/videos';
+          ? `https://globalpulse-news-production-31ee.up.railway.app/api/videos/${editingVideo._id}`
+          : 'https://globalpulse-news-production-31ee.up.railway.app/api/videos';
         
         const method = editingVideo ? 'PUT' : 'POST';
 
@@ -509,8 +509,8 @@ function DashboardContent() {
     try {
       const token = localStorage.getItem('token');
       const url = type === 'article' 
-        ? `http://localhost:5000/api/articles/${id}`
-        : `http://localhost:5000/api/videos/${id}`;
+        ? `https://globalpulse-news-production-31ee.up.railway.app/api/articles/${id}`
+        : `https://globalpulse-news-production-31ee.up.railway.app/api/videos/${id}`;
 
       const response = await fetch(url, {
         method: 'DELETE',

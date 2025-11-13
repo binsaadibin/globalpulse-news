@@ -126,7 +126,7 @@ export default function Home() {
       setRefreshing(true);
       setError(null);
       
-      const response = await fetch('http://localhost:5000/api/articles');
+      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/articles');
       
       if (response.ok) {
         const data = await response.json();

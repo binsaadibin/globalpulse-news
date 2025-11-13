@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/me', { // ← Add full backend URL
+      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/auth/me', { // ← Add full backend URL
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', { // ← Add full backend URL
+      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/auth/login', { // ← Add full backend URL
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
