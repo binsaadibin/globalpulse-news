@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { setupVite, serveStatic, log } from "./vite";
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
+import cors from 'cors';
 
 const app = express();
 
@@ -17,36 +18,33 @@ const connectDB = async () => {
 };
 connectDB();
 
-// CORS headers - Fixed for production
-app.use((req, res, next) => {
-  const allowedOrigins = [
-    'http://localhost:5173',
-    'http://localhost:5174', 
-    'https://globalplus.netlify.app', // Your actual Netlify domain
-    'https://*.netlify.app'
-  ];
-  const origin = req.headers.origin;
-  
-  // Allow requests from any origin in development, specific origins in production
-  if (process.env.NODE_ENV === 'development' || (origin && allowedOrigins.some(allowed => {
-    if (allowed.includes('*')) {
-      const domain = allowed.replace('*.', '');
-      return origin.endsWith(domain);
+// CORS configuration - Using cors package
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'https://globalplus.netlify.app',
+      'https://globalpulse-news-production-31ee.up.railway.app'
+    ];
+    
+    // Check if the origin is in allowed list or is a Netlify subdomain
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.netlify.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
     }
-    return allowed === origin;
-  }))) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
-});
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+}));
+
+// Handle preflight requests
+app.options('*', cors());
 
 // Root route for Railway health checks
 app.get('/', (req, res) => {
