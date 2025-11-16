@@ -130,23 +130,8 @@ export default function Home() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('📰 Fetched articles from API:', data);
-        
-        // FIX: Handle both array and object response formats
-        let articlesData = [];
-        if (Array.isArray(data)) {
-          articlesData = data;
-        } else if (data && Array.isArray(data.data)) {
-          articlesData = data.data;
-        } else if (data && data.success && Array.isArray(data.data)) {
-          articlesData = data.data;
-        } else {
-          console.warn('Unexpected API response format:', data);
-          articlesData = [];
-        }
-        
-        console.log('📊 Processed articles:', articlesData.length);
-        setArticles(articlesData);
+        console.log('📰 Fetched articles from API:', data.length);
+        setArticles(data);
       } else {
         throw new Error('Failed to fetch articles');
       }
@@ -188,16 +173,8 @@ export default function Home() {
     return categoryMap[cat] || cat;
   };
 
-  // FIX: Ensure articles is always an array before filtering
   const filteredArticles = useMemo(() => {
-    if (!Array.isArray(articles)) {
-      console.warn('Articles is not an array:', articles);
-      return [];
-    }
-
     let filtered = articles.filter(article => {
-      if (!article) return false;
-      
       const articleTitle = getDisplayText(article.title);
       const articleDescription = getDisplayText(article.description);
       
@@ -220,12 +197,10 @@ export default function Home() {
     return filtered;
   }, [articles, searchQuery, categoryFilter, selectedTab, language]);
 
-  // Get trending articles - FIX: Ensure articles is array
+  // Get trending articles
   const trendingArticles = useMemo(() => {
-    if (!Array.isArray(articles)) return [];
-    
     return [...articles]
-      .filter(article => article && (article.isTrending || (article.views || 0) > 100))
+      .filter(article => article.isTrending || (article.views || 0) > 100)
       .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, 4);
   }, [articles]);
@@ -302,7 +277,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
-        {/* Header Section */}
+        {/* Header Section - Justified text for mobile */}
         <div className="text-center mb-6 sm:mb-10">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 leading-tight text-justify sm:text-center">
             {t.topNews}
