@@ -1,8 +1,9 @@
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, ArrowRight, Eye, Clock } from 'lucide-react';
+import { Calendar, ArrowRight, Eye, Clock, Image as ImageIcon } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useState, useEffect } from 'react';
 
 interface NewsCardProps {
   title: string;
@@ -14,23 +15,22 @@ interface NewsCardProps {
   views?: number;
   readTime?: string;
   compact?: boolean;
+  isTrending?: boolean;
+  isFeatured?: boolean;
 }
 
 const translations = {
   en: {
     readMore: 'Read More',
-    views: 'views',
-    featuredArticle: 'Featured Article'
+    views: 'views'
   },
   ar: {
     readMore: 'اقرأ المزيد',
-    views: 'مشاهدة',
-    featuredArticle: 'مقال مميز'
+    views: 'مشاهدة'
   },
   ur: {
     readMore: 'مزید پڑھیں',
-    views: 'ویوز',
-    featuredArticle: 'نمایاں مضمون'
+    views: 'ویوز'
   }
 };
 
@@ -43,10 +43,19 @@ export default function NewsCard({
   onReadMore,
   views = 0,
   readTime = "5 min read",
-  compact = false
+  compact = false,
+  isTrending = false,
+  isFeatured = false
 }: NewsCardProps) {
   const { language } = useLanguage();
-  const t = translations[language];
+  const t = translations[language as 'en' | 'ar' | 'ur'];
+  const [imageError, setImageError] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+    setImageLoaded(false);
+  }, [imageUrl]);
 
   const formatCategory = (cat: string) => {
     const categoryMap: { [key: string]: { en: string; ar: string; ur: string } } = {
@@ -58,166 +67,129 @@ export default function NewsCard({
       health: { en: 'Health', ar: 'صحة', ur: 'صحت' }
     };
     
-    return categoryMap[cat]?.[language] || categoryMap[cat]?.en || cat;
+    return categoryMap[cat]?.[language as 'en' | 'ar' | 'ur'] || categoryMap[cat]?.en || cat;
   };
 
-  const getCategoryColor = (cat: string) => {
-    const colors: { [key: string]: string } = {
-      technology: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-      business: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-      sports: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-      politics: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-      environment: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300',
-      health: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-    };
-    return colors[cat] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  const getSafeImageUrl = (url: string | undefined) => {
+    if (!url) return null;
+    if (typeof url !== 'string') return null;
+    if (url.trim() === '') return null;
+    if (!url.startsWith('http')) return null;
+    return url;
   };
 
-  if (compact) {
-    return (
-      <Card className="w-full overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700 group cursor-pointer bg-white dark:bg-gray-800 h-full flex flex-col">
-        {/* Article Image */}
-        <div className="relative aspect-video overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-          {imageUrl ? (
-            <img 
-              src={imageUrl} 
-              alt={title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
-            />
-          ) : (
-            <div className="w-full h-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-              <Calendar className="h-8 w-8 text-gray-500 dark:text-gray-400" />
-            </div>
-          )}
-          
-          {/* Category Badge */}
-          <div className="absolute top-2 left-2">
-            <Badge className={`${getCategoryColor(category)} backdrop-blur-sm font-medium text-xs px-2 py-1 border-0`}>
-              {formatCategory(category)}
-            </Badge>
-          </div>
-        </div>
+  const safeImageUrl = getSafeImageUrl(imageUrl);
+  const showImage = safeImageUrl && !imageError;
 
-        <CardContent className="p-3 flex-1 flex flex-col">
-          {/* Title */}
-          <h3 className="font-semibold text-sm mb-2 line-clamp-2 leading-tight text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
-            {title}
-          </h3>
-          
-          {/* Description */}
-          <p className="text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-2 mb-3 text-xs flex-1">
-            {description}
-          </p>
-        </CardContent>
+  const handleImageError = () => {
+    setImageError(true);
+    setImageLoaded(true);
+  };
 
-        <CardFooter className="p-3 pt-0 flex justify-between items-center flex-shrink-0">
-          {/* Date and Views */}
-          <div className="flex items-center space-x-3 text-xs">
-            <div className="flex items-center text-gray-500 dark:text-gray-400">
-              <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
-              <span className="whitespace-nowrap text-xs">{timeAgo}</span>
-            </div>
-            <div className="flex items-center text-gray-500 dark:text-gray-400">
-              <Eye className="h-3 w-3 mr-1 flex-shrink-0" />
-              <span className="whitespace-nowrap text-xs">{views} {t.views}</span>
-            </div>
-          </div>
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
 
-          {/* Compact Read More Button */}
-          <Button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onReadMore();
-            }}
-            className="bg-gray-900 hover:bg-gray-800 text-white font-medium px-3 py-1.5 rounded-md text-xs transition-all duration-300 border-0 flex items-center whitespace-nowrap"
-            size="sm"
-          >
-            {t.readMore}
-            <ArrowRight className="h-3 w-3 ml-1 group-hover:translate-x-0.5 transition-transform duration-300 flex-shrink-0" />
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  }
+  const handleReadMore = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onReadMore();
+  };
 
   return (
-    <Card className="w-full overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700 group cursor-pointer bg-white dark:bg-gray-800 h-full flex flex-col">
-      {/* Article Image */}
-      <div className="relative aspect-video overflow-hidden bg-gray-100 dark:bg-gray-700 flex-shrink-0">
-        {imageUrl ? (
-          <img 
-            src={imageUrl} 
-            alt={title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="w-full h-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-            <Calendar className="h-12 w-12 text-gray-500 dark:text-gray-400" />
+    <Card className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer flex flex-col h-full min-h-[350px]">
+      
+      {/* Image Container with Fixed Aspect Ratio */}
+      <div className="w-full aspect-video bg-gray-100 dark:bg-gray-700 overflow-hidden relative flex-shrink-0">
+        {!imageLoaded && showImage && (
+          <div className="absolute inset-0 bg-gray-200 dark:bg-gray-600 animate-pulse flex items-center justify-center">
+            <ImageIcon className="h-8 w-8 text-gray-400" />
           </div>
         )}
         
-        {/* Category Badge */}
-        <div className="absolute top-3 left-3">
-          <Badge className={`${getCategoryColor(category)} backdrop-blur-sm font-medium text-xs px-3 py-1.5 border-0`}>
-            {formatCategory(category)}
-          </Badge>
-        </div>
-        
-        {/* Read Time */}
-        <div className="absolute top-3 right-3">
-          <Badge className="bg-gray-900/80 backdrop-blur-sm text-white font-medium text-xs px-2 py-1 border-0">
-            <Clock className="h-3 w-3 mr-1" />
-            {readTime}
-          </Badge>
+        {showImage ? (
+          <img 
+            src={safeImageUrl} 
+            alt={title}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            onError={handleImageError}
+            onLoad={handleImageLoad}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 flex items-center justify-center">
+            <ImageIcon className="h-8 w-8 text-gray-500 dark:text-gray-400" />
+          </div>
+        )}
+
+        {/* Trending/Featured Badges */}
+        <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+          {isTrending && (
+            <Badge className="bg-orange-500 text-white text-xs px-2 py-1">
+              🔥 Trending
+            </Badge>
+          )}
+          {isFeatured && (
+            <Badge className="bg-blue-500 text-white text-xs px-2 py-1">
+              ⭐ Featured
+            </Badge>
+          )}
         </div>
       </div>
 
+      {/* Content Section */}
       <CardContent className="p-4 flex-1 flex flex-col">
+        {/* Category Badge */}
+        <div className="mb-3">
+          <Badge variant="secondary" className="text-xs font-medium">
+            {formatCategory(category)}
+          </Badge>
+        </div>
+
         {/* Title */}
-        <h3 className="font-semibold text-base mb-2 line-clamp-2 leading-tight text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors duration-300">
+        <h3 className="font-semibold text-base mb-2 line-clamp-2 text-gray-900 dark:text-white leading-tight min-h-[2.5rem]">
           {title}
         </h3>
         
         {/* Description */}
-        <p className="text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-3 mb-3 text-sm flex-1">
-          {description}
-        </p>
-      </CardContent>
-
-      <CardFooter className="p-4 pt-0 flex justify-between items-center flex-shrink-0">
-        {/* Date and Views */}
-        <div className="flex items-center space-x-4 text-xs">
-          <div className="flex items-center text-gray-500 dark:text-gray-400 font-medium">
-            <Calendar className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-            <span className="whitespace-nowrap">{timeAgo}</span>
-          </div>
-          <div className="flex items-center text-gray-500 dark:text-gray-400 font-medium">
-            <Eye className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-            <span className="whitespace-nowrap">{views} {t.views}</span>
-          </div>
+        <div className="flex-1 mb-4 min-h-[60px]">
+          <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3 leading-relaxed">
+            {description}
+          </p>
         </div>
 
-        {/* Read More Button */}
-        <Button 
-          onClick={(e) => {
-            e.stopPropagation();
-            onReadMore();
-          }}
-          className="bg-gray-900 hover:bg-gray-800 text-white font-medium px-4 py-2 rounded-lg transition-all duration-300 border-0 flex items-center whitespace-nowrap"
-          size="sm"
-        >
-          {t.readMore}
-          <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-300 flex-shrink-0" />
-        </Button>
-      </CardFooter>
+        {/* Metadata and Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+          {/* Metadata */}
+          <div className="flex items-center justify-between sm:justify-start gap-4 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+            <div className="flex items-center">
+              <Calendar className="h-3 w-3 mr-1" />
+              <span className="whitespace-nowrap">{timeAgo}</span>
+            </div>
+            <div className="flex items-center">
+              <Eye className="h-3 w-3 mr-1" />
+              <span className="whitespace-nowrap">{views} {t.views}</span>
+            </div>
+            <div className="flex items-center">
+              <Clock className="h-3 w-3 mr-1" />
+              <span className="whitespace-nowrap">{readTime}</span>
+            </div>
+          </div>
+
+          {/* Read More Button */}
+          <Button 
+            onClick={handleReadMore}
+            variant="outline"
+            size="sm"
+            className="text-xs h-8 px-3 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 whitespace-nowrap mt-2 sm:mt-0 w-full sm:w-auto"
+          >
+            {t.readMore}
+            <ArrowRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+      </CardContent>
     </Card>
   );
 }

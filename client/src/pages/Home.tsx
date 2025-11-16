@@ -117,9 +117,9 @@ export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   
-  const t = translations[language];
+  const t = translations[language as 'en' | 'ar' | 'ur'];
 
-  // Fetch ONLY real articles from backend - NO MOCK DATA
+  // Fetch articles from backend
   const fetchArticles = async () => {
     try {
       setLoading(true);
@@ -130,16 +130,30 @@ export default function Home() {
       
       if (response.ok) {
         const data = await response.json();
-        console.log('📰 Fetched articles from API:', data.length);
-        // Use ONLY the data from API, no mock data
-        setArticles(data);
+        console.log('📰 Fetched articles from API:', data);
+        
+        // FIX: Handle both array and object response formats
+        let articlesData = [];
+        if (Array.isArray(data)) {
+          articlesData = data;
+        } else if (data && Array.isArray(data.data)) {
+          articlesData = data.data;
+        } else if (data && data.success && Array.isArray(data.data)) {
+          articlesData = data.data;
+        } else {
+          console.warn('Unexpected API response format:', data);
+          articlesData = [];
+        }
+        
+        console.log('📊 Processed articles:', articlesData.length);
+        setArticles(articlesData);
       } else {
         throw new Error('Failed to fetch articles');
       }
     } catch (error) {
       console.error('❌ Error fetching articles:', error);
       setError('Failed to load articles from server');
-      setArticles([]); // Set empty array instead of mock data
+      setArticles([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -152,9 +166,14 @@ export default function Home() {
 
   // Helper function to safely extract text
   const getDisplayText = (textObject: any): string => {
-    if (!textObject) return '';
+    if (!textObject) return 'No description available';
     if (typeof textObject === 'string') return textObject;
-    return textObject[language] || textObject.en || textObject.ar || textObject.ur || '';
+    
+    const text = textObject[language as 'en' | 'ar' | 'ur'] || textObject.en || textObject.ar || textObject.ur || '';
+    
+    if (!text.trim()) return 'No description available';
+    
+    return text;
   };
 
   const formatCategory = (cat: string) => {
@@ -169,8 +188,16 @@ export default function Home() {
     return categoryMap[cat] || cat;
   };
 
+  // FIX: Ensure articles is always an array before filtering
   const filteredArticles = useMemo(() => {
+    if (!Array.isArray(articles)) {
+      console.warn('Articles is not an array:', articles);
+      return [];
+    }
+
     let filtered = articles.filter(article => {
+      if (!article) return false;
+      
       const articleTitle = getDisplayText(article.title);
       const articleDescription = getDisplayText(article.description);
       
@@ -184,9 +211,8 @@ export default function Home() {
       return matchesSearch && matchesCategory;
     });
 
-    // Apply tab-specific filtering
     if (selectedTab === 'featured') {
-      filtered = filtered.filter(article => article.featured);
+      filtered = filtered.filter(article => article.isFeatured);
     } else if (selectedTab === 'popular') {
       filtered = filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
     }
@@ -194,9 +220,12 @@ export default function Home() {
     return filtered;
   }, [articles, searchQuery, categoryFilter, selectedTab, language]);
 
-  // Get trending articles (most viewed)
+  // Get trending articles - FIX: Ensure articles is array
   const trendingArticles = useMemo(() => {
+    if (!Array.isArray(articles)) return [];
+    
     return [...articles]
+      .filter(article => article && (article.isTrending || (article.views || 0) > 100))
       .sort((a, b) => (b.views || 0) - (a.views || 0))
       .slice(0, 4);
   }, [articles]);
@@ -215,7 +244,6 @@ export default function Home() {
     setSelectedTab('popular');
     setCategoryFilter('all');
     setSearchQuery('');
-    // Scroll to articles section
     setTimeout(() => {
       document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -225,10 +253,8 @@ export default function Home() {
     setSelectedTab(value);
   };
 
-  // Refresh articles when modal closes (in case of updates)
   const handleModalClose = () => {
     closeModal();
-    // Refresh articles to get any updates
     fetchArticles();
   };
 
@@ -276,12 +302,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
-        {/* Header Section - Removed Breaking News Badge */}
-        <div className="text-center mb-8 sm:mb-12">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 leading-tight">
+        {/* Header Section */}
+        <div className="text-center mb-6 sm:mb-10">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 leading-tight text-justify sm:text-center">
             {t.topNews}
           </h1>
-          <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-light px-2">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto font-light px-2 leading-relaxed text-justify sm:text-center">
             {language === 'ar' 
               ? 'ابق على اطلاع بأحدث الأخبار والقصص من جميع أنحاء العالم'
               : language === 'ur'
@@ -292,60 +318,60 @@ export default function Home() {
         </div>
 
         {/* Refresh Button */}
-        <div className="flex justify-center mb-6 sm:mb-8">
+        <div className="flex justify-center mb-4 sm:mb-6">
           <Button
             onClick={handleRefresh}
             disabled={refreshing}
             variant="outline"
-            className="border-gray-600 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 font-semibold rounded-lg px-4 sm:px-6 py-2 transition-all duration-300 active:scale-95"
+            className="border-gray-600 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 font-semibold rounded-lg px-3 sm:px-4 py-1.5 sm:py-2 transition-all duration-300 active:scale-95 text-xs sm:text-sm"
             size="sm"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             {refreshing ? t.loading : t.refresh}
           </Button>
         </div>
 
-        {/* Search and Filter Section - Always in one line */}
-        <div className="flex flex-row gap-2 sm:gap-4 mb-8 sm:mb-12 items-center">
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        {/* Search and Filter Section */}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-6 sm:mb-8">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
             <Input
               type="search"
               placeholder={t.search}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 focus:border-gray-500 rounded-lg transition-all duration-300 bg-white dark:bg-gray-800 w-full"
+              className="pl-8 sm:pl-10 pr-3 sm:pr-4 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 focus:border-gray-500 rounded-lg transition-all duration-300 bg-white dark:bg-gray-800 w-full"
             />
           </div>
-          <div className="flex items-center gap-2 min-w-[140px] sm:min-w-[160px]">
+          <div className="w-full sm:w-40">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="border border-gray-300 dark:border-gray-600 focus:border-gray-500 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 transition-all duration-300 w-full">
+              <SelectTrigger className="border border-gray-300 dark:border-gray-600 focus:border-gray-500 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm bg-white dark:bg-gray-800 transition-all duration-300 w-full">
                 <SelectValue placeholder={t.filter} />
               </SelectTrigger>
               <SelectContent className="rounded-lg border border-gray-300 dark:border-gray-600 shadow-lg bg-white dark:bg-gray-800 max-h-60">
-                <SelectItem value="all" className="text-sm py-2">{t.all}</SelectItem>
-                <SelectItem value="technology" className="text-sm py-2">🚀 {t.technology}</SelectItem>
-                <SelectItem value="business" className="text-sm py-2">💼 {t.business}</SelectItem>
-                <SelectItem value="sports" className="text-sm py-2">⚽ {t.sports}</SelectItem>
-                <SelectItem value="politics" className="text-sm py-2">🏛️ {t.politics}</SelectItem>
-                <SelectItem value="environment" className="text-sm py-2">🌱 {t.environment}</SelectItem>
-                <SelectItem value="health" className="text-sm py-2">❤️ {t.health}</SelectItem>
+                <SelectItem value="all" className="text-xs sm:text-sm py-2">{t.all}</SelectItem>
+                <SelectItem value="technology" className="text-xs sm:text-sm py-2">🚀 {t.technology}</SelectItem>
+                <SelectItem value="business" className="text-xs sm:text-sm py-2">💼 {t.business}</SelectItem>
+                <SelectItem value="sports" className="text-xs sm:text-sm py-2">⚽ {t.sports}</SelectItem>
+                <SelectItem value="politics" className="text-xs sm:text-sm py-2">🏛️ {t.politics}</SelectItem>
+                <SelectItem value="environment" className="text-xs sm:text-sm py-2">🌱 {t.environment}</SelectItem>
+                <SelectItem value="health" className="text-xs sm:text-sm py-2">❤️ {t.health}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         {/* Stats Section */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-8 sm:mb-12">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8">
           {[
             { icon: BookOpen, color: 'text-gray-600', value: `${articles.length}+`, label: t.totalArticles },
             { icon: Eye, color: 'text-gray-600', value: '15K+', label: t.dailyViews },
             { icon: Users, color: 'text-gray-600', value: '50K+', label: t.readers },
             { icon: Clock, color: 'text-gray-600', value: '24/7', label: t.updated }
           ].map((stat, index) => (
-            <div key={index} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
-              <stat.icon className={`h-5 w-5 sm:h-6 sm:w-6 ${stat.color} mx-auto mb-1 sm:mb-2`} />
-              <div className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white">{stat.value}</div>
+            <div key={index} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-2 sm:p-3 md:p-4 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+              <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color} mx-auto mb-1`} />
+              <div className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">{stat.value}</div>
               <div className="text-xs text-gray-600 dark:text-gray-300">{stat.label}</div>
             </div>
           ))}
@@ -353,60 +379,38 @@ export default function Home() {
 
         {/* Trending Section */}
         {trendingArticles.length > 0 && (
-          <div className="mb-8 sm:mb-12">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 mb-6 sm:mb-8">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-gray-600" />
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
                 <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{t.trending}</h2>
               </div>
               <Button 
                 onClick={handleSeeAllTrending}
                 variant="outline"
-                className="border-gray-600 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 font-medium rounded-lg px-3 sm:px-4 py-1.5 transition-all duration-300 active:scale-95 w-full sm:w-auto text-sm"
+                className="border-gray-600 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 font-medium rounded-lg px-2 sm:px-3 py-1 transition-all duration-300 active:scale-95 w-full sm:w-auto text-xs sm:text-sm"
                 size="sm"
               >
                 {t.seeAll}
                 <ArrowRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
-            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {trendingArticles.map((article) => (
-                <div 
-                  key={article._id} 
-                  className="bg-white dark:bg-gray-800 rounded-lg sm:rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700 group cursor-pointer active:scale-95"
-                  onClick={() => handleReadMore(article)}
-                >
-                  <div className="relative aspect-video overflow-hidden">
-                    {article.imageUrl ? (
-                      <img 
-                        src={article.imageUrl} 
-                        alt={getDisplayText(article.title)}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center">
-                        <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-white opacity-80" />
-                      </div>
-                    )}
-                    <div className="absolute top-2 left-2">
-                      <Badge className="bg-white/90 backdrop-blur-sm text-gray-800 text-xs font-medium">
-                        {formatCategory(article.category)}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-medium text-sm line-clamp-2 mb-2 text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300 transition-colors">
-                      {getDisplayText(article.title)}
-                    </h3>
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center">
-                        <Eye className="h-3 w-3 mr-1" />
-                        {article.views || 0} {t.views}
-                      </div>
-                      <div>{article.readTime || '5 min read'}</div>
-                    </div>
-                  </div>
-                </div>
+                <NewsCard
+                  key={article._id}
+                  title={getDisplayText(article.title)}
+                  description={getDisplayText(article.description)}
+                  category={formatCategory(article.category)}
+                  imageUrl={article.imageUrl}
+                  timeAgo={new Date(article.createdAt).toLocaleDateString()}
+                  views={article.views || 0}
+                  readTime={article.readTime || '5 min read'}
+                  onReadMore={() => handleReadMore(article)}
+                  compact={true}
+                  isTrending={article.isTrending}
+                  isFeatured={article.isFeatured}
+                />
               ))}
             </div>
           </div>
@@ -414,8 +418,8 @@ export default function Home() {
 
         {/* Main Content Tabs */}
         <div id="articles-section">
-          <Tabs value={selectedTab} onValueChange={handleTabChange} className="mb-6 sm:mb-8">
-            <TabsList className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg sm:rounded-xl p-1 mb-6 sm:mb-8 flex flex-wrap sm:flex-nowrap">
+          <Tabs value={selectedTab} onValueChange={handleTabChange} className="mb-4 sm:mb-6">
+            <TabsList className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg p-1 mb-4 sm:mb-6 flex flex-wrap sm:flex-nowrap">
               {[
                 { value: 'all', label: t.all, icon: null },
                 { value: 'featured', label: t.featured, icon: Star },
@@ -424,9 +428,9 @@ export default function Home() {
                 <TabsTrigger 
                   key={tab.value}
                   value={tab.value} 
-                  className="data-[state=active]:bg-gray-900 data-[state=active]:text-white rounded-md sm:rounded-lg px-3 sm:px-4 py-2 font-medium transition-all duration-300 flex-1 text-xs sm:text-sm m-0.5"
+                  className="data-[state=active]:bg-gray-900 data-[state=active]:text-white rounded-md px-2 sm:px-3 py-1.5 font-medium transition-all duration-300 flex-1 text-xs sm:text-sm m-0.5"
                 >
-                  {tab.icon && <tab.icon className="h-3 w-3 sm:h-3 sm:w-3 mr-1" />}
+                  {tab.icon && <tab.icon className="h-3 w-3 mr-1" />}
                   {tab.label}
                 </TabsTrigger>
               ))}
@@ -435,18 +439,20 @@ export default function Home() {
             {['all', 'featured', 'popular'].map((tabValue) => (
               <TabsContent key={tabValue} value={tabValue} className="mt-0">
                 {filteredArticles.length === 0 ? (
-                  <div className="text-center py-8 sm:py-12">
-                    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg sm:rounded-xl p-6 sm:p-8 border border-gray-200 dark:border-gray-700 max-w-md mx-auto">
+                  <div className="text-center py-6 sm:py-8">
+                    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 max-w-md mx-auto">
                       {tabValue === 'featured' ? (
-                        <Star className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 mx-auto mb-3" />
+                        <Star className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />
                       ) : tabValue === 'popular' ? (
-                        <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 mx-auto mb-3" />
+                        <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />
                       ) : (
-                        <Search className="h-8 w-8 sm:h-10 sm:w-10 text-gray-400 mx-auto mb-3" />
+                        <Search className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />
                       )}
-                      <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base mb-2">{t.noResults}</p>
+                      <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base mb-2 text-justify sm:text-center">
+                        {t.noResults}
+                      </p>
                       {articles.length > 0 && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 text-justify sm:text-center">
                           {language === 'ar' 
                             ? 'حاول تغيير معايير البحث أو التصفية'
                             : language === 'ur'
@@ -458,7 +464,7 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {filteredArticles.map((article) => (
                       <NewsCard
                         key={article._id}
@@ -471,6 +477,8 @@ export default function Home() {
                         readTime={article.readTime || '5 min read'}
                         onReadMore={() => handleReadMore(article)}
                         compact={true}
+                        isTrending={article.isTrending}
+                        isFeatured={article.isFeatured}
                       />
                     ))}
                   </div>
@@ -485,7 +493,6 @@ export default function Home() {
           article={selectedArticle}
           isOpen={isModalOpen}
           onClose={handleModalClose}
-          language={language}
         />
       </div>
     </div>
