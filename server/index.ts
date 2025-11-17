@@ -1,9 +1,22 @@
+// import express, { type Request, Response, NextFunction } from "express";
+// import { createServer, type Server } from "http";
+// import mongoose from 'mongoose';
+// import jwt from 'jsonwebtoken';
+// import cors from 'cors';
+// import path from 'path';
+
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
 import path from 'path';
+import { fileURLToPath } from 'url'; // ADD THIS
+import { dirname } from 'path'; // ADD THIS
+
+// ADD THESE 2 LINES
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 console.log('🚀 Server starting initialization...');
 
