@@ -48,12 +48,28 @@ app.use(cors({
 // Handle preflight requests
 app.options('*', cors());
 
+// Health check endpoint - specific for Railway
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'GlobalPulse News API',
+    version: '1.0.0'
+  });
+});
+
 // Root route for Railway health checks
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.json({ 
     status: 'OK', 
     message: 'GlobalPulse News API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      articles: '/api/articles',
+      videos: '/api/videos',
+      auth: '/api/auth'
+    }
   });
 });
 
@@ -958,15 +974,21 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     // serveStatic(app); // Commented out for production
   }
 
-  console.log('🚀 DEBUG: Starting server...');
-  console.log('🔧 DEBUG: process.env.PORT =', process.env.PORT);
-  console.log('🔧 DEBUG: NODE_ENV =', process.env.NODE_ENV);
+  console.log('🚀 Starting server...');
+  console.log('🔧 PORT:', process.env.PORT);
+  console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
+  
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
-  console.log('🎯 DEBUG: Final port to use =', port);
+  
   httpServer.listen({
     port,
-    host: "0.0.0.0",
+    host: "0.0.0.0", // Important for Railway
   }, () => {
-    log(`serving on port ${port}`);
+    console.log(`✅ Server running on port ${port}`);
+    console.log(`✅ Health check available at http://0.0.0.0:${port}/health`);
+    console.log(`✅ API endpoints available at http://0.0.0.0:${port}/api`);
+  }).on('error', (error) => {
+    console.error('❌ Server failed to start:', error);
+    process.exit(1);
   });
 })();
