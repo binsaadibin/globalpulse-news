@@ -17,6 +17,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   clearError: () => void;
+  getAuthHeaders: () => Record<string, string>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,10 +73,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const clearError = () => setError(null);
 
+  // Function to get auth headers for API requests
+  const getAuthHeaders = (): Record<string, string> => {
+    const token = TokenManager.getToken();
+    if (!token) {
+      return { 'Content-Type': 'application/json' };
+    }
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  };
+
   // Enhanced token validation
   const validateToken = async (token: string): Promise<boolean> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -223,7 +236,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout, 
       loading,
       error,
-      clearError
+      clearError,
+      getAuthHeaders
     }}>
       {children}
     </AuthContext.Provider>

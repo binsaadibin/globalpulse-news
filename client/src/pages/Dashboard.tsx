@@ -1,76 +1,51 @@
 import { useState, useEffect } from 'react';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Video, User, Trash2, Edit, Plus, Eye, X, TrendingUp, Star } from 'lucide-react';
-import ProtectedRoute from '@/components/ProtectedRoute';
-
-interface Article {
-  _id: string;
-  title: { en: string; ar: string; ur: string };
-  description: { en: string; ar: string; ur: string };
-  category: string;
-  imageUrl: string;
-  status: string;
-  isTrending: boolean;
-  isFeatured: boolean;
-  createdAt: string;
-  createdByUsername?: string;
-}
-
-interface Video {
-  _id: string;
-  title: { en: string; ar: string; ur: string };
-  description: { en: string; ar: string; ur: string };
-  platform: string;
-  videoUrl: string;
-  status: string;
-  createdAt: string;
-  createdByUsername?: string;
-}
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { Plus, Edit, Trash2, Eye, Video, FileText, Calendar, Users, TrendingUp, Star, Search, Filter, Save, Send, X, Link, Image } from 'lucide-react';
 
 const translations = {
   en: {
     dashboard: 'Dashboard',
-    addArticle: 'Add Article',
-    addVideo: 'Add Video',
-    myArticles: 'My Articles',
-    myVideos: 'My Videos',
-    titleEn: 'Title (English)',
-    titleAr: 'Title (Arabic)',
-    titleUr: 'Title (Urdu)',
-    descEn: 'Description (English)',
-    descAr: 'Description (Arabic)',
-    descUr: 'Description (Urdu)',
+    welcome: 'Welcome back',
+    stats: 'Your Stats',
+    totalArticles: 'Total Articles',
+    totalVideos: 'Total Videos',
+    totalViews: 'Total Views',
+    createNew: 'Create New',
+    articles: 'Articles',
+    videos: 'Videos',
+    drafts: 'Drafts',
+    published: 'Published',
+    all: 'All',
+    title: 'Title',
+    description: 'Description',
     category: 'Category',
     imageUrl: 'Image URL',
     videoUrl: 'Video URL',
     platform: 'Platform',
-    publish: 'Publish',
-    saveDraft: 'Save as Draft',
-    success: 'Published successfully!',
-    loggedInAs: 'Logged in as',
     status: 'Status',
     actions: 'Actions',
-    published: 'Published',
-    draft: 'Draft',
-    delete: 'Delete',
+    publish: 'Publish',
+    saveDraft: 'Save Draft',
     edit: 'Edit',
+    delete: 'Delete',
+    view: 'View',
     noArticles: 'No articles yet',
     noVideos: 'No videos yet',
-    deleteSuccess: 'Deleted successfully!',
-    deleteError: 'Failed to delete',
-    confirmDelete: 'Are you sure you want to delete this?',
-    view: 'View',
-    content: 'Content',
+    createArticle: 'Create Article',
+    createVideo: 'Create Video',
+    search: 'Search...',
+    filterByStatus: 'Filter by status',
     technology: 'Technology',
     business: 'Business',
     sports: 'Sports',
@@ -78,53 +53,80 @@ const translations = {
     environment: 'Environment',
     health: 'Health',
     youtube: 'YouTube',
-    facebook: 'Facebook',
-    tiktok: 'TikTok',
-    instagram: 'Instagram',
-    save: 'Save',
+    vimeo: 'Vimeo',
+    other: 'Other',
+    articlePublished: 'Article published successfully',
+    articleSaved: 'Article saved as draft',
+    videoPublished: 'Video published successfully',
+    videoSaved: 'Video saved as draft',
+    error: 'An error occurred',
+    confirmDelete: 'Are you sure you want to delete this?',
+    deleted: 'Deleted successfully',
+    readTime: 'Read Time',
+    minutes: 'minutes',
+    content: 'Content',
+    articleContent: 'Article content...',
     cancel: 'Cancel',
+    create: 'Create',
     update: 'Update',
-    updateSuccess: 'Updated successfully!',
-    trending: 'Trending',
+    titleEn: 'Title (English)',
+    titleAr: 'Title (Arabic)',
+    titleUr: 'Title (Urdu)',
+    descriptionEn: 'Description (English)',
+    descriptionAr: 'Description (Arabic)',
+    descriptionUr: 'Description (Urdu)',
+    contentEn: 'Content (English)',
+    contentAr: 'Content (Arabic)',
+    contentUr: 'Content (Urdu)',
+    analytics: 'Analytics',
+    performance: 'Performance',
+    recentActivity: 'Recent Activity',
     featured: 'Featured',
-    markTrending: 'Mark as Trending',
-    markFeatured: 'Mark as Featured',
-    removeTrending: 'Remove from Trending',
-    removeFeatured: 'Remove from Featured'
+    trending: 'Trending',
+    makeFeatured: 'Make Featured',
+    makeTrending: 'Make Trending',
+    thumbnail: 'Thumbnail URL',
+    videoId: 'Video ID',
+    embedUrl: 'Embed URL',
+    videoTitle: 'Video Title',
+    videoTitleEn: 'Video Title (English)',
+    videoTitleAr: 'Video Title (Arabic)',
+    videoTitleUr: 'Video Title (Urdu)',
+    enterVideoUrl: 'Enter video URL...',
+    enterThumbnailUrl: 'Enter thumbnail URL...'
   },
   ar: {
     dashboard: 'لوحة التحكم',
-    addArticle: 'إضافة مقال',
-    addVideo: 'إضافة فيديو',
-    myArticles: 'مقالاتي',
-    myVideos: 'فيديوهاتي',
-    titleEn: 'العنوان (إنجليزي)',
-    titleAr: 'العنوان (عربي)',
-    titleUr: 'العنوان (أردو)',
-    descEn: 'الوصف (إنجليزي)',
-    descAr: 'الوصف (عربي)',
-    descUr: 'الوصف (أردو)',
+    welcome: 'مرحباً بعودتك',
+    stats: 'إحصائياتك',
+    totalArticles: 'إجمالي المقالات',
+    totalVideos: 'إجمالي الفيديوهات',
+    totalViews: 'إجمالي المشاهدات',
+    createNew: 'إنشاء جديد',
+    articles: 'المقالات',
+    videos: 'الفيديوهات',
+    drafts: 'مسودات',
+    published: 'منشور',
+    all: 'الكل',
+    title: 'العنوان',
+    description: 'الوصف',
     category: 'الفئة',
     imageUrl: 'رابط الصورة',
     videoUrl: 'رابط الفيديو',
     platform: 'المنصة',
-    publish: 'نشر',
-    saveDraft: 'حفظ كمسودة',
-    success: 'تم النشر بنجاح!',
-    loggedInAs: 'مسجل الدخول كـ',
     status: 'الحالة',
     actions: 'الإجراءات',
-    published: 'منشور',
-    draft: 'مسودة',
-    delete: 'حذف',
+    publish: 'نشر',
+    saveDraft: 'حفظ كمسودة',
     edit: 'تعديل',
+    delete: 'حذف',
+    view: 'عرض',
     noArticles: 'لا توجد مقالات بعد',
     noVideos: 'لا توجد فيديوهات بعد',
-    deleteSuccess: 'تم الحذف بنجاح!',
-    deleteError: 'فشل في الحذف',
-    confirmDelete: 'هل أنت متأكد أنك تريد حذف هذا؟',
-    view: 'عرض',
-    content: 'المحتوى',
+    createArticle: 'إنشاء مقال',
+    createVideo: 'إنشاء فيديو',
+    search: 'بحث...',
+    filterByStatus: 'تصفية حسب الحالة',
     technology: 'تكنولوجيا',
     business: 'أعمال',
     sports: 'رياضة',
@@ -132,53 +134,80 @@ const translations = {
     environment: 'بيئة',
     health: 'صحة',
     youtube: 'يوتيوب',
-    facebook: 'فيسبوك',
-    tiktok: 'تيك توك',
-    instagram: 'إنستغرام',
-    save: 'حفظ',
+    vimeo: 'فيميو',
+    other: 'أخرى',
+    articlePublished: 'تم نشر المقال بنجاح',
+    articleSaved: 'تم حفظ المقال كمسودة',
+    videoPublished: 'تم نشر الفيديو بنجاح',
+    videoSaved: 'تم حفظ الفيديو كمسودة',
+    error: 'حدث خطأ',
+    confirmDelete: 'هل أنت متأكد من الحذف؟',
+    deleted: 'تم الحذف بنجاح',
+    readTime: 'وقت القراءة',
+    minutes: 'دقائق',
+    content: 'المحتوى',
+    articleContent: 'محتوى المقال...',
     cancel: 'إلغاء',
+    create: 'إنشاء',
     update: 'تحديث',
-    updateSuccess: 'تم التحديث بنجاح!',
-    trending: 'شائع',
+    titleEn: 'العنوان (الإنجليزية)',
+    titleAr: 'العنوان (العربية)',
+    titleUr: 'العنوان (الأردية)',
+    descriptionEn: 'الوصف (الإنجليزية)',
+    descriptionAr: 'الوصف (العربية)',
+    descriptionUr: 'الوصف (الأردية)',
+    contentEn: 'المحتوى (الإنجليزية)',
+    contentAr: 'المحتوى (العربية)',
+    contentUr: 'المحتوى (الأردية)',
+    analytics: 'التحليلات',
+    performance: 'الأداء',
+    recentActivity: 'النشاط الحديث',
     featured: 'مميز',
-    markTrending: 'تعيين كشائع',
-    markFeatured: 'تعيين كمميز',
-    removeTrending: 'إزالة من الشائع',
-    removeFeatured: 'إزالة من المميز'
+    trending: 'شائع',
+    makeFeatured: 'جعله مميزاً',
+    makeTrending: 'جعله شائعاً',
+    thumbnail: 'رابط الصورة المصغرة',
+    videoId: 'معرف الفيديو',
+    embedUrl: 'رابط التضمين',
+    videoTitle: 'عنوان الفيديو',
+    videoTitleEn: 'عنوان الفيديو (الإنجليزية)',
+    videoTitleAr: 'عنوان الفيديو (العربية)',
+    videoTitleUr: 'عنوان الفيديو (الأردية)',
+    enterVideoUrl: 'أدخل رابط الفيديو...',
+    enterThumbnailUrl: 'أدخل رابط الصورة المصغرة...'
   },
   ur: {
     dashboard: 'ڈیش بورڈ',
-    addArticle: 'مضمون شامل کریں',
-    addVideo: 'ویڈیو شامل کریں',
-    myArticles: 'میرے مضامین',
-    myVideos: 'میری ویڈیوز',
-    titleEn: 'عنوان (انگریزی)',
-    titleAr: 'عنوان (عربی)',
-    titleUr: 'عنوان (اردو)',
-    descEn: 'تفصیل (انگریزی)',
-    descAr: 'تفصیل (عربی)',
-    descUr: 'تفصیل (اردو)',
+    welcome: 'خوش آمدید',
+    stats: 'آپ کے اعداد و شمار',
+    totalArticles: 'کل مضامین',
+    totalVideos: 'کل ویڈیوز',
+    totalViews: 'کل ویوز',
+    createNew: 'نیا بنائیں',
+    articles: 'مضامین',
+    videos: 'ویڈیوز',
+    drafts: 'ڈرافٹس',
+    published: 'شائع شدہ',
+    all: 'سب',
+    title: 'عنوان',
+    description: 'تفصیل',
     category: 'زمرہ',
     imageUrl: 'تصویر کا لنک',
-    videoUrl: 'ویڈیو لنک',
+    videoUrl: 'ویڈیو کا لنک',
     platform: 'پلیٹ فارم',
-    publish: 'شائع کریں',
-    saveDraft: 'مسودے کے طور پر محفوظ کریں',
-    success: 'کامیابی سے شائع ہوگیا!',
-    loggedInAs: 'کے طور پر لاگ ان ہیں',
     status: 'حالت',
     actions: 'اعمال',
-    published: 'شائع شدہ',
-    draft: 'مسودہ',
+    publish: 'شائع کریں',
+    saveDraft: 'ڈرافٹ کے طور پر محفوظ کریں',
+    edit: 'ترمیم',
     delete: 'حذف کریں',
-    edit: 'ترمیم کریں',
+    view: 'دیکھیں',
     noArticles: 'ابھی تک کوئی مضمون نہیں',
     noVideos: 'ابھی تک کوئی ویڈیو نہیں',
-    deleteSuccess: 'کامیابی سے حذف ہوگیا!',
-    deleteError: 'حذف کرنے میں ناکام',
-    confirmDelete: 'کیا آپ واقعی اسے حذف کرنا چاہتے ہیں؟',
-    view: 'دیکھیں',
-    content: 'مواد',
+    createArticle: 'مضمون بنائیں',
+    createVideo: 'ویڈیو بنائیں',
+    search: 'تلاش کریں...',
+    filterByStatus: 'حالت کے لحاظ سے فلٹر کریں',
     technology: 'ٹیکنالوجی',
     business: 'کاروبار',
     sports: 'کھیل',
@@ -186,1248 +215,1423 @@ const translations = {
     environment: 'ماحول',
     health: 'صحت',
     youtube: 'یوٹیوب',
-    facebook: 'فیس بک',
-    tiktok: 'ٹک ٹاک',
-    instagram: 'انسٹاگرام',
-    save: 'محفوظ کریں',
+    vimeo: 'Vimeo',
+    other: 'دیگر',
+    articlePublished: 'مضمون کامیابی سے شائع ہوگیا',
+    articleSaved: 'مضمون ڈرافٹ کے طور پر محفوظ ہوگیا',
+    videoPublished: 'ویڈیو کامیابی سے شائع ہوگئی',
+    videoSaved: 'ویڈیو ڈرافٹ کے طور پر محفوظ ہوگئی',
+    error: 'ایک خرابی پیش آگئی',
+    confirmDelete: 'کیا آپ واقعی اسے حذف کرنا چاہتے ہیں؟',
+    deleted: 'کامیابی سے حذف ہوگیا',
+    readTime: 'پڑھنے کا وقت',
+    minutes: 'منٹ',
+    content: 'مواد',
+    articleContent: 'مضمون کا مواد...',
     cancel: 'منسوخ کریں',
+    create: 'بنائیں',
     update: 'اپ ڈیٹ کریں',
-    updateSuccess: 'کامیابی سے اپ ڈیٹ ہوگیا!',
-    trending: 'مقبول',
+    titleEn: 'عنوان (انگریزی)',
+    titleAr: 'عنوان (عربی)',
+    titleUr: 'عنوان (اردو)',
+    descriptionEn: 'تفصیل (انگریزی)',
+    descriptionAr: 'تفصیل (عربی)',
+    descriptionUr: 'تفصیل (اردو)',
+    contentEn: 'مواد (انگریزی)',
+    contentAr: 'مواد (عربی)',
+    contentUr: 'مواد (اردو)',
+    analytics: 'تجزیات',
+    performance: 'کارکردگی',
+    recentActivity: 'حالیہ سرگرمی',
     featured: 'نمایاں',
-    markTrending: 'مقبول کے طور پر نشان زد کریں',
-    markFeatured: 'نمایاں کے طور پر نشان زد کریں',
-    removeTrending: 'مقبول سے ہٹائیں',
-    removeFeatured: 'نمایاں سے ہٹائیں'
-  },
+    trending: 'مقبول',
+    makeFeatured: 'نمایاں بنائیں',
+    makeTrending: 'مقبول بنائیں',
+    thumbnail: 'تھمب نیل کا لنک',
+    videoId: 'ویڈیو آئی ڈی',
+    embedUrl: 'ایمبیڈ لنک',
+    videoTitle: 'ویڈیو کا عنوان',
+    videoTitleEn: 'ویڈیو کا عنوان (انگریزی)',
+    videoTitleAr: 'ویڈیو کا عنوان (عربی)',
+    videoTitleUr: 'ویڈیو کا عنوان (اردو)',
+    enterVideoUrl: 'ویڈیو کا لنک درج کریں...',
+    enterThumbnailUrl: 'تھمب نیل کا لنک درج کریں...'
+  }
 };
 
-function DashboardContent() {
+const API_BASE_URL = 'https://globalpulse-news-production-31ee.up.railway.app';
+
+interface Article {
+  _id: string;
+  title: any;
+  description: any;
+  content?: any;
+  category: string;
+  imageUrl: string;
+  status: 'draft' | 'published';
+  views: number;
+  likes: number;
+  readTime?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdByUsername?: string;
+  isFeatured?: boolean;
+  isTrending?: boolean;
+}
+
+interface Video {
+  _id: string;
+  title: any;
+  videoUrl: string;
+  platform: string;
+  category: string;
+  status: 'draft' | 'published';
+  views: number;
+  createdAt: string;
+  updatedAt: string;
+  createdByUsername?: string;
+  isFeatured?: boolean;
+  isTrending?: boolean;
+  thumbnailUrl?: string;
+}
+
+// Article Form Component
+function ArticleForm({ editingArticle, onSave, onCancel, loading, translations }: any) {
+  const [formData, setFormData] = useState({
+    title: editingArticle?.title || { en: '', ar: '', ur: '' },
+    description: editingArticle?.description || { en: '', ar: '', ur: '' },
+    content: editingArticle?.content || { en: '', ar: '', ur: '' },
+    category: editingArticle?.category || 'technology',
+    imageUrl: editingArticle?.imageUrl || '',
+    readTime: editingArticle?.readTime?.replace(' min read', '') || '5',
+    status: editingArticle?.status || 'draft',
+    isFeatured: editingArticle?.isFeatured || false,
+    isTrending: editingArticle?.isTrending || false,
+  });
+
+  const handleSubmit = (status: 'draft' | 'published') => {
+    onSave({
+      ...formData,
+      status,
+      readTime: `${formData.readTime} min read`
+    });
+  };
+
+  return (
+    <Card className="mb-8 border-2 border-blue-200 dark:border-blue-800">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span>{editingArticle ? translations.update : translations.create} {translations.createArticle}</span>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            <X className="h-4 w-4" />
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-6">
+          {/* Article Title Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.titleEn} *</label>
+              <Input
+                value={formData.title.en || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  title: { ...prev.title, en: e.target.value }
+                }))}
+                placeholder="Enter title in English"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.titleAr}</label>
+              <Input
+                value={formData.title.ar || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  title: { ...prev.title, ar: e.target.value }
+                }))}
+                placeholder="Enter title in Arabic"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.titleUr}</label>
+              <Input
+                value={formData.title.ur || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  title: { ...prev.title, ur: e.target.value }
+                }))}
+                placeholder="Enter title in Urdu"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Article Description Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.descriptionEn} *</label>
+              <Textarea
+                value={formData.description.en || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  description: { ...prev.description, en: e.target.value }
+                }))}
+                placeholder="Enter description in English"
+                rows={3}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.descriptionAr}</label>
+              <Textarea
+                value={formData.description.ar || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  description: { ...prev.description, ar: e.target.value }
+                }))}
+                placeholder="Enter description in Arabic"
+                rows={3}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.descriptionUr}</label>
+              <Textarea
+                value={formData.description.ur || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  description: { ...prev.description, ur: e.target.value }
+                }))}
+                placeholder="Enter description in Urdu"
+                rows={3}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Article Content Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.contentEn} *</label>
+              <Textarea
+                value={formData.content.en || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  content: { ...prev.content, en: e.target.value }
+                }))}
+                placeholder={translations.articleContent}
+                rows={6}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.contentAr}</label>
+              <Textarea
+                value={formData.content.ar || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  content: { ...prev.content, ar: e.target.value }
+                }))}
+                placeholder={translations.articleContent}
+                rows={6}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.contentUr}</label>
+              <Textarea
+                value={formData.content.ur || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  content: { ...prev.content, ur: e.target.value }
+                }))}
+                placeholder={translations.articleContent}
+                rows={6}
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.category}</label>
+              <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="technology">{translations.technology}</SelectItem>
+                  <SelectItem value="business">{translations.business}</SelectItem>
+                  <SelectItem value="sports">{translations.sports}</SelectItem>
+                  <SelectItem value="politics">{translations.politics}</SelectItem>
+                  <SelectItem value="environment">{translations.environment}</SelectItem>
+                  <SelectItem value="health">{translations.health}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.readTime} ({translations.minutes})</label>
+              <Input
+                type="number"
+                value={formData.readTime}
+                onChange={(e) => setFormData(prev => ({ ...prev, readTime: e.target.value }))}
+                placeholder="5"
+                min="1"
+                max="60"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium mb-2 block">{translations.imageUrl}</label>
+              <Input
+                value={formData.imageUrl}
+                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
+          </div>
+
+          {/* Featured & Trending Toggles */}
+          <div className="flex gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={formData.isFeatured}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isFeatured: checked }))}
+              />
+              <Label className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-500" />
+                {translations.makeFeatured}
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={formData.isTrending}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isTrending: checked }))}
+              />
+              <Label className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-orange-500" />
+                {translations.makeTrending}
+              </Label>
+            </div>
+          </div>
+
+          <div className="flex gap-4 justify-end pt-4 border-t">
+            <Button variant="outline" onClick={onCancel} disabled={loading}>
+              {translations.cancel}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => handleSubmit('draft')} 
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {translations.saveDraft}
+            </Button>
+            <Button 
+              onClick={() => handleSubmit('published')} 
+              disabled={loading}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <Send className="h-4 w-4" />
+              {translations.publish}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Video Form Component
+function VideoForm({ editingVideo, onSave, onCancel, loading, translations }: any) {
+  const [formData, setFormData] = useState({
+    title: editingVideo?.title || { en: '', ar: '', ur: '' },
+    videoUrl: editingVideo?.videoUrl || '',
+    platform: editingVideo?.platform || 'youtube',
+    category: editingVideo?.category || 'technology',
+    thumbnailUrl: editingVideo?.thumbnailUrl || '',
+    status: editingVideo?.status || 'draft',
+    isFeatured: editingVideo?.isFeatured || false,
+    isTrending: editingVideo?.isTrending || false,
+  });
+
+  const handleSubmit = (status: 'draft' | 'published') => {
+    onSave({
+      ...formData,
+      status
+    });
+  };
+
+  return (
+    <Card className="mb-8 border-2 border-green-200 dark:border-green-800">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Video className="h-5 w-5" />
+            <span>{editingVideo ? translations.update : translations.create} {translations.createVideo}</span>
+          </span>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            <X className="h-4 w-4" />
+          </Button>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-6">
+          {/* Video Title Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.videoTitleEn} *</label>
+              <Input
+                value={formData.title.en || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  title: { ...prev.title, en: e.target.value }
+                }))}
+                placeholder="Enter video title in English"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.videoTitleAr}</label>
+              <Input
+                value={formData.title.ar || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  title: { ...prev.title, ar: e.target.value }
+                }))}
+                placeholder="Enter video title in Arabic"
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.videoTitleUr}</label>
+              <Input
+                value={formData.title.ur || ''}
+                onChange={(e) => setFormData(prev => ({
+                  ...prev,
+                  title: { ...prev.title, ur: e.target.value }
+                }))}
+                placeholder="Enter video title in Urdu"
+                className="w-full"
+              />
+            </div>
+          </div>
+
+          {/* Video URL and Platform */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.videoUrl} *</label>
+              <div className="relative">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={formData.videoUrl}
+                  onChange={(e) => setFormData(prev => ({ ...prev, videoUrl: e.target.value }))}
+                  placeholder="https://youtube.com/watch?v=..."
+                  className="w-full pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.platform}</label>
+              <Select value={formData.platform} onValueChange={(value) => setFormData(prev => ({ ...prev, platform: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="youtube">{translations.youtube}</SelectItem>
+                  <SelectItem value="vimeo">{translations.vimeo}</SelectItem>
+                  <SelectItem value="other">{translations.other}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Thumbnail and Category */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.thumbnail}</label>
+              <div className="relative">
+                <Image className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  value={formData.thumbnailUrl}
+                  onChange={(e) => setFormData(prev => ({ ...prev, thumbnailUrl: e.target.value }))}
+                  placeholder="https://example.com/thumbnail.jpg"
+                  className="w-full pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">{translations.category}</label>
+              <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="technology">{translations.technology}</SelectItem>
+                  <SelectItem value="business">{translations.business}</SelectItem>
+                  <SelectItem value="sports">{translations.sports}</SelectItem>
+                  <SelectItem value="politics">{translations.politics}</SelectItem>
+                  <SelectItem value="environment">{translations.environment}</SelectItem>
+                  <SelectItem value="health">{translations.health}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Featured & Trending Toggles */}
+          <div className="flex gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={formData.isFeatured}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isFeatured: checked }))}
+              />
+              <Label className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-500" />
+                {translations.makeFeatured}
+              </Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={formData.isTrending}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isTrending: checked }))}
+              />
+              <Label className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-orange-500" />
+                {translations.makeTrending}
+              </Label>
+            </div>
+          </div>
+
+          <div className="flex gap-4 justify-end pt-4 border-t">
+            <Button variant="outline" onClick={onCancel} disabled={loading}>
+              {translations.cancel}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => handleSubmit('draft')} 
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {translations.saveDraft}
+            </Button>
+            <Button 
+              onClick={() => handleSubmit('published')} 
+              disabled={loading}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <Send className="h-4 w-4" />
+              {translations.publish}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function Dashboard() {
   const { language } = useLanguage();
-  const { currentUser } = useAuth();
-  const t = translations[language];
   const { toast } = useToast();
-
-  const [articleForm, setArticleForm] = useState({
-    title: { en: '', ar: '', ur: '' },
-    description: { en: '', ar: '', ur: '' },
-    category: '',
-    imageUrl: '',
-    isTrending: false,
-    isFeatured: false
-  });
-
-  const [videoForm, setVideoForm] = useState({
-    title: { en: '', ar: '', ur: '' },
-    description: { en: '', ar: '', ur: '' },
-    platform: '',
-    videoUrl: '',
-  });
-
-  const [userArticles, setUserArticles] = useState<Article[]>([]);
-  const [userVideos, setUserVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { currentUser, getAuthHeaders } = useAuth();
+  const t = translations[language as keyof typeof translations];
+  
+  const [activeTab, setActiveTab] = useState('overview');
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Form states
+  const [showArticleForm, setShowArticleForm] = useState(false);
+  const [showVideoForm, setShowVideoForm] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
-  const [activeTab, setActiveTab] = useState('add-article');
+  const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
-    if (currentUser) {
-      fetchUserArticles();
-      fetchUserVideos();
-    }
-  }, [currentUser]);
+    fetchUserData();
+  }, []);
 
-  // Switch to appropriate tab when editing
-  useEffect(() => {
-    if (editingArticle) {
-      setActiveTab('add-article');
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchUserArticles(),
+        fetchUserVideos()
+      ]);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      toast({
+        title: t.error,
+        description: 'Failed to load your content',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [editingArticle]);
-
-  useEffect(() => {
-    if (editingVideo) {
-      setActiveTab('add-video');
-    }
-  }, [editingVideo]);
+  };
 
   const fetchUserArticles = async () => {
     try {
-      console.log('🔄 Fetching user articles...');
-      const token = localStorage.getItem('token');
-      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/articles/my-articles', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
+        headers: getAuthHeaders()
       });
-      
+
       if (response.ok) {
-        const articles = await response.json();
-        console.log('📰 Received articles:', articles);
-        setUserArticles(articles);
+        const data = await response.json();
+        let articlesArray: Article[] = [];
+        
+        if (Array.isArray(data)) {
+          articlesArray = data;
+        } else if (data && Array.isArray(data.data)) {
+          articlesArray = data.data;
+        } else if (data && Array.isArray(data.articles)) {
+          articlesArray = data.articles;
+        } else if (data && typeof data === 'object') {
+          articlesArray = [data];
+        }
+        
+        setArticles(articlesArray);
       } else {
-        console.error('❌ Failed to fetch articles:', response.status);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch articles',
-          variant: 'destructive',
-        });
+        setArticles([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching articles:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch articles',
-        variant: 'destructive',
-      });
+      console.error('Failed to fetch articles:', error);
+      setArticles([]);
     }
   };
 
   const fetchUserVideos = async () => {
     try {
-      console.log('🔄 Fetching user videos...');
-      const token = localStorage.getItem('token');
-      const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/videos/my-videos', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await fetch(`${API_BASE_URL}/api/videos/my-videos`, {
+        headers: getAuthHeaders()
       });
-      
+
       if (response.ok) {
-        const videos = await response.json();
-        console.log('🎬 Received videos:', videos);
-        setUserVideos(videos);
+        const data = await response.json();
+        let videosArray: Video[] = [];
+        
+        if (Array.isArray(data)) {
+          videosArray = data;
+        } else if (data && Array.isArray(data.data)) {
+          videosArray = data.data;
+        } else if (data && Array.isArray(data.videos)) {
+          videosArray = data.videos;
+        } else if (data && typeof data === 'object') {
+          videosArray = [data];
+        }
+        
+        setVideos(videosArray);
       } else {
-        console.error('❌ Failed to fetch videos:', response.status);
-        toast({
-          title: 'Error',
-          description: 'Failed to fetch videos',
-          variant: 'destructive',
-        });
+        setVideos([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching videos:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch videos',
-        variant: 'destructive',
-      });
+      console.error('Failed to fetch videos:', error);
+      setVideos([]);
     }
   };
 
-  const handlePublishArticle = async () => {
-    if (!articleForm.title.en || !articleForm.category) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in required fields (Title in English and Category)',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
+  // Article handlers
+  const handleSaveArticle = async (articleData: any) => {
     try {
-      const token = localStorage.getItem('token');
+      setFormLoading(true);
       const url = editingArticle 
-        ? `https://globalpulse-news-production-31ee.up.railway.app/api/articles/${editingArticle._id}`
-        : 'https://globalpulse-news-production-31ee.up.railway.app/api/articles';
-      
+        ? `${API_BASE_URL}/api/articles/${editingArticle._id}`
+        : `${API_BASE_URL}/api/articles`;
+
       const method = editingArticle ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...articleForm,
-          status: 'published'
-        }),
+        headers: getAuthHeaders(),
+        body: JSON.stringify(articleData)
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const result = await response.json();
         toast({
-          title: editingArticle ? t.updateSuccess : t.success,
-          description: result.message || (editingArticle ? 'Article updated successfully' : 'Article published successfully'),
+          title: articleData.status === 'published' ? t.articlePublished : t.articleSaved,
+          description: editingArticle ? 'Article updated successfully' : `Article ${articleData.status === 'published' ? 'published' : 'saved as draft'} successfully`
         });
-        resetArticleForm();
+        resetForms();
         fetchUserArticles();
       } else {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to save article');
+        throw new Error(data.message || t.error);
       }
     } catch (error: any) {
-      console.error('❌ Article error:', error);
+      console.error('Article error:', error);
       toast({
-        title: 'Error',
+        title: t.error,
         description: error.message || 'Failed to save article',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
-  const handlePublishVideo = async () => {
-    if (!videoForm.title.en || !videoForm.platform || !videoForm.videoUrl) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in required fields (Title in English, Platform, and Video URL)',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
+  // Video handlers
+  const handleSaveVideo = async (videoData: any) => {
     try {
-      const token = localStorage.getItem('token');
+      setFormLoading(true);
       const url = editingVideo 
-        ? `https://globalpulse-news-production-31ee.up.railway.app/api/videos/${editingVideo._id}`
-        : 'https://globalpulse-news-production-31ee.up.railway.app/api/videos';
-      
+        ? `${API_BASE_URL}/api/videos/${editingVideo._id}`
+        : `${API_BASE_URL}/api/videos`;
+
       const method = editingVideo ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ...videoForm,
-          status: 'published'
-        }),
+        headers: getAuthHeaders(),
+        body: JSON.stringify(videoData)
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const result = await response.json();
         toast({
-          title: editingVideo ? t.updateSuccess : t.success,
-          description: result.message || (editingVideo ? 'Video updated successfully' : 'Video published successfully'),
+          title: videoData.status === 'published' ? t.videoPublished : t.videoSaved,
+          description: editingVideo ? 'Video updated successfully' : `Video ${videoData.status === 'published' ? 'published' : 'saved as draft'} successfully`
         });
-        resetVideoForm();
+        resetForms();
         fetchUserVideos();
       } else {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to save video');
+        throw new Error(data.message || t.error);
       }
     } catch (error: any) {
-      console.error('❌ Video error:', error);
+      console.error('Video error:', error);
       toast({
-        title: 'Error',
+        title: t.error,
         description: error.message || 'Failed to save video',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
-  const handleSaveDraft = async (type: 'article' | 'video') => {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      
-      if (type === 'article') {
-        if (!articleForm.title.en || !articleForm.category) {
-          toast({
-            title: 'Error',
-            description: 'Please fill in required fields',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        const url = editingArticle 
-          ? `https://globalpulse-news-production-31ee.up.railway.app/api/articles/${editingArticle._id}`
-          : 'https://globalpulse-news-production-31ee.up.railway.app/api/articles';
-        
-        const method = editingArticle ? 'PUT' : 'POST';
-
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...articleForm,
-            status: 'draft'
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          toast({
-            title: 'Saved',
-            description: result.message || (editingArticle ? 'Article draft updated' : 'Article saved as draft'),
-          });
-          resetArticleForm();
-          fetchUserArticles();
-        } else {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Failed to save article');
-        }
-      } else {
-        if (!videoForm.title.en || !videoForm.platform || !videoForm.videoUrl) {
-          toast({
-            title: 'Error',
-            description: 'Please fill in required fields',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        const url = editingVideo 
-          ? `https://globalpulse-news-production-31ee.up.railway.app/api/videos/${editingVideo._id}`
-          : 'https://globalpulse-news-production-31ee.up.railway.app/api/videos';
-        
-        const method = editingVideo ? 'PUT' : 'POST';
-
-        const response = await fetch(url, {
-          method,
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...videoForm,
-            status: 'draft'
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          toast({
-            title: 'Saved',
-            description: result.message || (editingVideo ? 'Video draft updated' : 'Video saved as draft'),
-          });
-          resetVideoForm();
-          fetchUserVideos();
-        } else {
-          const errorText = await response.text();
-          throw new Error(errorText || 'Failed to save video');
-        }
-      }
-    } catch (error: any) {
-      console.error('❌ Draft save error:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to save draft',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (type: 'article' | 'video', id: string) => {
+  const handleDelete = async (id: string, type: 'article' | 'video') => {
     if (!confirm(t.confirmDelete)) return;
 
-    setDeletingId(id);
     try {
-      const token = localStorage.getItem('token');
-      const url = type === 'article' 
-        ? `https://globalpulse-news-production-31ee.up.railway.app/api/articles/${id}`
-        : `https://globalpulse-news-production-31ee.up.railway.app/api/videos/${id}`;
-
-      const response = await fetch(url, {
+      const response = await fetch(`${API_BASE_URL}/api/${type}s/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: getAuthHeaders()
       });
 
-      if (response.ok) {
-        const result = await response.json();
+      const data = await response.json();
+
+      if (response.ok && data.success) {
         toast({
-          title: t.deleteSuccess,
-          description: result.message || `${type === 'article' ? 'Article' : 'Video'} deleted successfully`,
+          title: t.deleted,
+          description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted successfully`
         });
-        // Remove from local state
         if (type === 'article') {
-          setUserArticles(prev => prev.filter(article => article._id !== id));
-          if (editingArticle?._id === id) {
-            resetArticleForm();
-          }
+          fetchUserArticles();
         } else {
-          setUserVideos(prev => prev.filter(video => video._id !== id));
-          if (editingVideo?._id === id) {
-            resetVideoForm();
-          }
+          fetchUserVideos();
         }
       } else {
-        const errorText = await response.text();
-        throw new Error(errorText || `Failed to delete ${type}`);
+        throw new Error(data.message || 'Failed to delete');
       }
-    } catch (error: any) {
-      console.error('❌ Delete error:', error);
+    } catch (error) {
+      console.error('Delete error:', error);
       toast({
-        title: t.deleteError,
-        description: error.message || `Failed to delete ${type}`,
-        variant: 'destructive',
+        title: t.error,
+        description: 'Failed to delete item',
+        variant: 'destructive'
       });
-    } finally {
-      setDeletingId(null);
     }
   };
 
-  const handleEditArticle = (article: Article) => {
-    console.log('✏️ Editing article:', article);
-    setEditingArticle(article);
-    setArticleForm({
-      title: article.title,
-      description: article.description,
-      category: article.category,
-      imageUrl: article.imageUrl,
-      isTrending: article.isTrending,
-      isFeatured: article.isFeatured
-    });
-    setActiveTab('add-article');
-  };
-
-  const handleEditVideo = (video: Video) => {
-    console.log('✏️ Editing video:', video);
-    setEditingVideo(video);
-    setVideoForm({
-      title: video.title,
-      description: video.description,
-      platform: video.platform,
-      videoUrl: video.videoUrl,
-    });
-    setActiveTab('add-video');
-  };
-
-  const handleToggleTrending = async (articleId: string, currentStatus: boolean) => {
+  const handleToggleFeatured = async (id: string, type: 'article' | 'video', currentStatus: boolean) => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`https://globalpulse-news-production-31ee.up.railway.app/api/articles/${articleId}`, {
+      const url = `${API_BASE_URL}/api/${type}s/${id}`;
+      const updateData = {
+        isFeatured: !currentStatus
+      };
+
+      const response = await fetch(url, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          isTrending: !currentStatus
-        }),
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updateData)
       });
 
       if (response.ok) {
         toast({
           title: 'Success',
-          description: !currentStatus ? 'Article marked as trending' : 'Article removed from trending',
+          description: `${type} ${!currentStatus ? 'marked as featured' : 'removed from featured'}`
         });
-        fetchUserArticles();
+        if (type === 'article') {
+          fetchUserArticles();
+        } else {
+          fetchUserVideos();
+        }
       } else {
-        throw new Error('Failed to update trending status');
+        throw new Error('Failed to update');
       }
     } catch (error) {
-      console.error('Error updating trending status:', error);
+      console.error('Toggle featured error:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to update trending status',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleToggleFeatured = async (articleId: string, currentStatus: boolean) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`https://globalpulse-news-production-31ee.up.railway.app/api/articles/${articleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          isFeatured: !currentStatus
-        }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: !currentStatus ? 'Article marked as featured' : 'Article removed from featured',
-        });
-        fetchUserArticles();
-      } else {
-        throw new Error('Failed to update featured status');
-      }
-    } catch (error) {
-      console.error('Error updating featured status:', error);
-      toast({
-        title: 'Error',
+        title: t.error,
         description: 'Failed to update featured status',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     }
   };
 
-  const resetArticleForm = () => {
-    setEditingArticle(null);
-    setArticleForm({
-      title: { en: '', ar: '', ur: '' },
-      description: { en: '', ar: '', ur: '' },
-      category: '',
-      imageUrl: '',
-      isTrending: false,
-      isFeatured: false
-    });
-  };
+  const handleToggleTrending = async (id: string, type: 'article' | 'video', currentStatus: boolean) => {
+    try {
+      const url = `${API_BASE_URL}/api/${type}s/${id}`;
+      const updateData = {
+        isTrending: !currentStatus
+      };
 
-  const resetVideoForm = () => {
-    setEditingVideo(null);
-    setVideoForm({
-      title: { en: '', ar: '', ur: '' },
-      description: { en: '', ar: '', ur: '' },
-      platform: '',
-      videoUrl: '',
-    });
-  };
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updateData)
+      });
 
-  const handleCancelEdit = (type: 'article' | 'video') => {
-    if (type === 'article') {
-      resetArticleForm();
-    } else {
-      resetVideoForm();
+      if (response.ok) {
+        toast({
+          title: 'Success',
+          description: `${type} ${!currentStatus ? 'marked as trending' : 'removed from trending'}`
+        });
+        if (type === 'article') {
+          fetchUserArticles();
+        } else {
+          fetchUserVideos();
+        }
+      } else {
+        throw new Error('Failed to update');
+      }
+    } catch (error) {
+      console.error('Toggle trending error:', error);
+      toast({
+        title: t.error,
+        description: 'Failed to update trending status',
+        variant: 'destructive'
+      });
     }
   };
 
-  const formatCategory = (cat: string) => {
-    const categoryMap: { [key: string]: string } = {
-      technology: t.technology,
-      business: t.business,
-      sports: t.sports,
-      politics: t.politics,
-      environment: t.environment,
-      health: t.health
-    };
-    return categoryMap[cat] || cat;
+  const resetForms = () => {
+    setShowArticleForm(false);
+    setShowVideoForm(false);
+    setEditingArticle(null);
+    setEditingVideo(null);
   };
 
-  const formatPlatform = (platform: string) => {
-    const platformMap: { [key: string]: string } = {
-      youtube: t.youtube,
-      facebook: t.facebook,
-      tiktok: t.tiktok,
-      instagram: t.instagram
-    };
-    return platformMap[platform] || platform;
+  const startCreateArticle = () => {
+    setEditingArticle(null);
+    setShowArticleForm(true);
+    setShowVideoForm(false);
+    setActiveTab('articles');
+  };
+
+  const startCreateVideo = () => {
+    setEditingVideo(null);
+    setShowVideoForm(true);
+    setShowArticleForm(false);
+    setActiveTab('videos');
+  };
+
+  const startEditArticle = (article: Article) => {
+    setEditingArticle(article);
+    setShowArticleForm(true);
+    setShowVideoForm(false);
+    setActiveTab('articles');
+  };
+
+  const startEditVideo = (video: Video) => {
+    setEditingVideo(video);
+    setShowVideoForm(true);
+    setShowArticleForm(false);
+    setActiveTab('videos');
   };
 
   const getDisplayText = (textObject: any): string => {
-    if (!textObject) return 'No description available';
+    if (!textObject) return 'No title';
     if (typeof textObject === 'string') return textObject;
-    
-    const text = textObject[language] || textObject.en || textObject.ar || textObject.ur || '';
-    
-    // Return a fallback if the text is empty
-    if (!text.trim()) return 'No description available';
-    
-    return text;
+    return textObject[language] || textObject.en || textObject.ar || textObject.ur || 'No title';
   };
 
+  const filteredArticles = (Array.isArray(articles) ? articles : []).filter(article => {
+    const searchText = searchQuery.toLowerCase();
+    const matchesSearch = 
+      getDisplayText(article.title).toLowerCase().includes(searchText) ||
+      getDisplayText(article.description).toLowerCase().includes(searchText);
+    const matchesStatus = statusFilter === 'all' || article.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const filteredVideos = (Array.isArray(videos) ? videos : []).filter(video => {
+    const searchText = searchQuery.toLowerCase();
+    const matchesSearch = 
+      getDisplayText(video.title).toLowerCase().includes(searchText);
+    const matchesStatus = statusFilter === 'all' || video.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const safeArticles = Array.isArray(articles) ? articles : [];
+  const safeVideos = Array.isArray(videos) ? videos : [];
+
+  const stats = {
+    totalArticles: safeArticles.length,
+    totalVideos: safeVideos.length,
+    totalViews: safeArticles.reduce((sum, article) => sum + (article.views || 0), 0) +
+                safeVideos.reduce((sum, video) => sum + (video.views || 0), 0),
+    publishedArticles: safeArticles.filter(a => a.status === 'published').length,
+    publishedVideos: safeVideos.filter(v => v.status === 'published').length,
+    totalDrafts: safeArticles.filter(a => a.status === 'draft').length + 
+                 safeVideos.filter(v => v.status === 'draft').length,
+    featuredArticles: safeArticles.filter(a => a.isFeatured).length,
+    featuredVideos: safeVideos.filter(v => v.isFeatured).length,
+    trendingArticles: safeArticles.filter(a => a.isTrending).length,
+    trendingVideos: safeVideos.filter(v => v.isTrending).length
+  };
+
+  const recentActivity = [
+    ...safeArticles.slice(0, 3).map(article => ({
+      id: article._id,
+      type: 'article' as const,
+      title: getDisplayText(article.title),
+      status: article.status,
+      date: article.updatedAt,
+      views: article.views,
+      isFeatured: article.isFeatured,
+      isTrending: article.isTrending
+    })),
+    ...safeVideos.slice(0, 2).map(video => ({
+      id: video._id,
+      type: 'video' as const,
+      title: getDisplayText(video.title),
+      status: video.status,
+      date: video.updatedAt,
+      views: video.views,
+      isFeatured: video.isFeatured,
+      isTrending: video.isTrending
+    }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+   .slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-600 mx-auto mb-4"></div>
+          <div className="text-lg text-gray-600 dark:text-gray-300">Loading dashboard...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2 rounded-lg">
-              <User className="h-6 w-6 text-white" />
-            </div>
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                {t.dashboard}
-              </h1>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">
-                {t.loggedInAs} <span className="font-semibold">{currentUser?.username}</span>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t.dashboard}</h1>
+              <p className="text-gray-600 dark:text-gray-300">
+                {t.welcome}, <strong>{currentUser?.username}</strong>
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm px-4 py-2">
-              <div className="flex items-center gap-2">
-                <FileText className="h-3 w-3" />
-                <span>{userArticles.length} {t.myArticles.toLowerCase()}</span>
-                <Video className="h-3 w-3 ml-2" />
-                <span>{userVideos.length} {t.myVideos.toLowerCase()}</span>
-              </div>
-            </Badge>
+            <div className="flex gap-2 mt-4 sm:mt-0">
+              <Button
+                onClick={startCreateArticle}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t.createArticle}
+              </Button>
+              <Button
+                onClick={startCreateVideo}
+                variant="outline"
+                className="border-green-600 text-green-600 hover:bg-green-50"
+              >
+                <Video className="h-4 w-4 mr-2" />
+                {t.createVideo}
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 gap-1 mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-1 rounded-xl border">
-            <TabsTrigger value="add-article" className="flex items-center gap-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg text-xs sm:text-sm py-2">
-              <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="truncate">{editingArticle ? t.edit : t.addArticle}</span>
+        {/* Article Form */}
+        {showArticleForm && (
+          <ArticleForm
+            editingArticle={editingArticle}
+            onSave={handleSaveArticle}
+            onCancel={resetForms}
+            loading={formLoading}
+            translations={t}
+          />
+        )}
+
+        {/* Video Form */}
+        {showVideoForm && (
+          <VideoForm
+            editingVideo={editingVideo}
+            onSave={handleSaveVideo}
+            onCancel={resetForms}
+            loading={formLoading}
+            translations={t}
+          />
+        )}
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+          <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <FileText className="h-6 w-6 mx-auto mb-2 text-blue-200" />
+                <p className="text-blue-100 text-sm font-medium">{t.totalArticles}</p>
+                <p className="text-xl font-bold">{stats.totalArticles}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <Video className="h-6 w-6 mx-auto mb-2 text-green-200" />
+                <p className="text-green-100 text-sm font-medium">{t.totalVideos}</p>
+                <p className="text-xl font-bold">{stats.totalVideos}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <Eye className="h-6 w-6 mx-auto mb-2 text-purple-200" />
+                <p className="text-purple-100 text-sm font-medium">{t.totalViews}</p>
+                <p className="text-xl font-bold">{stats.totalViews.toLocaleString()}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <Star className="h-6 w-6 mx-auto mb-2 text-yellow-200" />
+                <p className="text-yellow-100 text-sm font-medium">{t.featured}</p>
+                <p className="text-xl font-bold">{stats.featuredArticles + stats.featuredVideos}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <TrendingUp className="h-6 w-6 mx-auto mb-2 text-orange-200" />
+                <p className="text-orange-100 text-sm font-medium">{t.trending}</p>
+                <p className="text-xl font-bold">{stats.trendingArticles + stats.trendingVideos}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
+            <CardContent className="p-4">
+              <div className="text-center">
+                <FileText className="h-6 w-6 mx-auto mb-2 text-red-200" />
+                <p className="text-red-100 text-sm font-medium">Drafts</p>
+                <p className="text-xl font-bold">{stats.totalDrafts}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Search and Filter */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder={t.search}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder={t.filterByStatus} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t.all}</SelectItem>
+              <SelectItem value="published">{t.published}</SelectItem>
+              <SelectItem value="draft">{t.drafts}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              {t.analytics}
             </TabsTrigger>
-            <TabsTrigger value="add-video" className="flex items-center gap-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg text-xs sm:text-sm py-2">
-              <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="truncate">{editingVideo ? t.edit : t.addVideo}</span>
+            <TabsTrigger value="articles" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              {t.articles} ({filteredArticles.length})
             </TabsTrigger>
-            <TabsTrigger value="my-articles" className="flex items-center gap-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg text-xs sm:text-sm py-2">
-              <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="truncate">{t.myArticles}</span>
-            </TabsTrigger>
-            <TabsTrigger value="my-videos" className="flex items-center gap-1 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white rounded-lg text-xs sm:text-sm py-2">
-              <Video className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="truncate">{t.myVideos}</span>
+            <TabsTrigger value="videos" className="flex items-center gap-2">
+              <Video className="h-4 w-4" />
+              {t.videos} ({filteredVideos.length})
             </TabsTrigger>
           </TabsList>
 
-          {/* Add Article Tab */}
-          <TabsContent value="add-article">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  {editingArticle ? t.edit : t.addArticle}
-                </CardTitle>
-                <CardDescription>
-                  {editingArticle ? 'Edit your article' : 'Create a multilingual news article'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="title-en" className="text-sm font-medium">{t.titleEn} *</Label>
-                    <Input
-                      id="title-en"
-                      value={articleForm.title.en}
-                      onChange={(e) => setArticleForm({
-                        ...articleForm,
-                        title: { ...articleForm.title, en: e.target.value }
-                      })}
-                      placeholder="Enter English title"
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="title-ar" className="text-sm font-medium">{t.titleAr}</Label>
-                    <Input
-                      id="title-ar"
-                      value={articleForm.title.ar}
-                      onChange={(e) => setArticleForm({
-                        ...articleForm,
-                        title: { ...articleForm.title, ar: e.target.value }
-                      })}
-                      placeholder="أدخل العنوان العربي"
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="title-ur" className="text-sm font-medium">{t.titleUr}</Label>
-                    <Input
-                      id="title-ur"
-                      value={articleForm.title.ur}
-                      onChange={(e) => setArticleForm({
-                        ...articleForm,
-                        title: { ...articleForm.title, ur: e.target.value }
-                      })}
-                      placeholder="اردو عنوان درج کریں"
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="desc-en" className="text-sm font-medium">{t.descEn}</Label>
-                    <Textarea
-                      id="desc-en"
-                      value={articleForm.description.en}
-                      onChange={(e) => setArticleForm({
-                        ...articleForm,
-                        description: { ...articleForm.description, en: e.target.value }
-                      })}
-                      rows={3}
-                      placeholder="Enter English description"
-                      className="bg-white dark:bg-gray-700 resize-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="desc-ar" className="text-sm font-medium">{t.descAr}</Label>
-                    <Textarea
-                      id="desc-ar"
-                      value={articleForm.description.ar}
-                      onChange={(e) => setArticleForm({
-                        ...articleForm,
-                        description: { ...articleForm.description, ar: e.target.value }
-                      })}
-                      rows={3}
-                      placeholder="أدخل الوصف العربي"
-                      className="bg-white dark:bg-gray-700 resize-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="desc-ur" className="text-sm font-medium">{t.descUr}</Label>
-                    <Textarea
-                      id="desc-ur"
-                      value={articleForm.description.ur}
-                      onChange={(e) => setArticleForm({
-                        ...articleForm,
-                        description: { ...articleForm.description, ur: e.target.value }
-                      })}
-                      rows={3}
-                      placeholder="اردو تفصیل درج کریں"
-                      className="bg-white dark:bg-gray-700 resize-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="category" className="text-sm font-medium">{t.category} *</Label>
-                    <Select
-                      value={articleForm.category}
-                      onValueChange={(value) => setArticleForm({ ...articleForm, category: value })}
-                    >
-                      <SelectTrigger id="category" className="bg-white dark:bg-gray-700">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="technology">{t.technology}</SelectItem>
-                        <SelectItem value="business">{t.business}</SelectItem>
-                        <SelectItem value="sports">{t.sports}</SelectItem>
-                        <SelectItem value="politics">{t.politics}</SelectItem>
-                        <SelectItem value="environment">{t.environment}</SelectItem>
-                        <SelectItem value="health">{t.health}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="image-url" className="text-sm font-medium">{t.imageUrl}</Label>
-                    <Input
-                      id="image-url"
-                      value={articleForm.imageUrl}
-                      onChange={(e) => setArticleForm({ ...articleForm, imageUrl: e.target.value })}
-                      placeholder="https://example.com/image.jpg"
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                </div>
-
-                {/* Trending and Featured Toggles */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isTrending"
-                      checked={articleForm.isTrending}
-                      onChange={(e) => setArticleForm({ ...articleForm, isTrending: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <Label htmlFor="isTrending" className="flex items-center gap-2 text-sm">
-                      <TrendingUp className="h-4 w-4" />
-                      {t.markTrending}
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="isFeatured"
-                      checked={articleForm.isFeatured}
-                      onChange={(e) => setArticleForm({ ...articleForm, isFeatured: e.target.checked })}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <Label htmlFor="isFeatured" className="flex items-center gap-2 text-sm">
-                      <Star className="h-4 w-4" />
-                      {t.markFeatured}
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button 
-                    onClick={handlePublishArticle} 
-                    disabled={loading}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold flex-1"
-                  >
-                    {loading ? (editingArticle ? 'Updating...' : 'Publishing...') : (editingArticle ? t.update : t.publish)}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleSaveDraft('article')}
-                    disabled={loading}
-                    className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  >
-                    {loading ? 'Saving...' : t.saveDraft}
-                  </Button>
-                  {editingArticle && (
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleCancelEdit('article')}
-                      disabled={loading}
-                      className="flex-1 border-gray-600 text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900/20"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      {t.cancel}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Add Video Tab */}
-          <TabsContent value="add-video">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Video className="h-5 w-5 text-blue-600" />
-                  {editingVideo ? t.edit : t.addVideo}
-                </CardTitle>
-                <CardDescription>
-                  {editingVideo ? 'Edit your video' : 'Add a video from various platforms'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="video-title-en" className="text-sm font-medium">{t.titleEn} *</Label>
-                    <Input
-                      id="video-title-en"
-                      value={videoForm.title.en}
-                      onChange={(e) => setVideoForm({
-                        ...videoForm,
-                        title: { ...videoForm.title, en: e.target.value }
-                      })}
-                      placeholder="Enter English title"
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="video-title-ar" className="text-sm font-medium">{t.titleAr}</Label>
-                    <Input
-                      id="video-title-ar"
-                      value={videoForm.title.ar}
-                      onChange={(e) => setVideoForm({
-                        ...videoForm,
-                        title: { ...videoForm.title, ar: e.target.value }
-                      })}
-                      placeholder="أدخل العنوان العربي"
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="video-title-ur" className="text-sm font-medium">{t.titleUr}</Label>
-                    <Input
-                      id="video-title-ur"
-                      value={videoForm.title.ur}
-                      onChange={(e) => setVideoForm({
-                        ...videoForm,
-                        title: { ...videoForm.title, ur: e.target.value }
-                      })}
-                      placeholder="اردو عنوان درج کریں"
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="video-desc-en" className="text-sm font-medium">{t.descEn}</Label>
-                    <Textarea
-                      id="video-desc-en"
-                      value={videoForm.description.en}
-                      onChange={(e) => setVideoForm({
-                        ...videoForm,
-                        description: { ...videoForm.description, en: e.target.value }
-                      })}
-                      rows={2}
-                      placeholder="Enter English description"
-                      className="bg-white dark:bg-gray-700 resize-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="video-desc-ar" className="text-sm font-medium">{t.descAr}</Label>
-                    <Textarea
-                      id="video-desc-ar"
-                      value={videoForm.description.ar}
-                      onChange={(e) => setVideoForm({
-                        ...videoForm,
-                        description: { ...videoForm.description, ar: e.target.value }
-                      })}
-                      rows={2}
-                      placeholder="أدخل الوصف العربي"
-                      className="bg-white dark:bg-gray-700 resize-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="video-desc-ur" className="text-sm font-medium">{t.descUr}</Label>
-                    <Textarea
-                      id="video-desc-ur"
-                      value={videoForm.description.ur}
-                      onChange={(e) => setVideoForm({
-                        ...videoForm,
-                        description: { ...videoForm.description, ur: e.target.value }
-                      })}
-                      rows={2}
-                      placeholder="اردو تفصیل درج کریں"
-                      className="bg-white dark:bg-gray-700 resize-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="platform" className="text-sm font-medium">{t.platform} *</Label>
-                    <Select
-                      value={videoForm.platform}
-                      onValueChange={(value) => setVideoForm({ ...videoForm, platform: value })}
-                    >
-                      <SelectTrigger id="platform" className="bg-white dark:bg-gray-700">
-                        <SelectValue placeholder="Select platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="youtube">{t.youtube}</SelectItem>
-                        <SelectItem value="facebook">{t.facebook}</SelectItem>
-                        <SelectItem value="tiktok">{t.tiktok}</SelectItem>
-                        <SelectItem value="instagram">{t.instagram}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="video-url" className="text-sm font-medium">{t.videoUrl} *</Label>
-                    <Input
-                      id="video-url"
-                      value={videoForm.videoUrl}
-                      onChange={(e) => setVideoForm({ ...videoForm, videoUrl: e.target.value })}
-                      placeholder="https://youtube.com/watch?v=..."
-                      className="bg-white dark:bg-gray-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-4">
-                  <Button 
-                    onClick={handlePublishVideo} 
-                    disabled={loading}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold flex-1"
-                  >
-                    {loading ? (editingVideo ? 'Updating...' : 'Publishing...') : (editingVideo ? t.update : t.publish)}
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleSaveDraft('video')}
-                    disabled={loading}
-                    className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  >
-                    {loading ? 'Saving...' : t.saveDraft}
-                  </Button>
-                  {editingVideo && (
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleCancelEdit('video')}
-                      disabled={loading}
-                      className="flex-1 border-gray-600 text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900/20"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      {t.cancel}
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* My Articles Tab - Improved Mobile Layout */}
-          <TabsContent value="my-articles">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-600" />
-                  {t.myArticles}
-                </CardTitle>
-                <CardDescription>
-                  Manage your published articles and drafts
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {userArticles.length === 0 ? (
-                  <div className="text-center py-12">
-                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">{t.noArticles}</p>
-                    <Button 
-                      onClick={() => setActiveTab('add-article')}
-                      className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {t.addArticle}
-                    </Button>
-                  </div>
-                ) : (
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    {t.performance}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-4">
-                    {userArticles.map((article) => (
-                      <div
-                        key={article._id}
-                        className="flex flex-col p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow"
-                      >
-                        {/* Content Section */}
-                        <div className="flex-1 min-w-0 mb-3">
-                          <div className="flex flex-col gap-2 mb-2">
-                            <h3 className="font-semibold text-base sm:text-lg break-words">
-                              {getDisplayText(article.title)}
-                            </h3>
-                            <div className="flex flex-wrap gap-2">
-                              <Badge 
-                                variant={article.status === 'published' ? 'default' : 'secondary'}
-                                className={article.status === 'published' 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs' 
-                                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs'
-                                }
-                              >
-                                {article.status === 'published' ? t.published : t.draft}
-                              </Badge>
-                              {article.isTrending && (
-                                <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-xs">
-                                  <TrendingUp className="h-3 w-3 mr-1" />
-                                  {t.trending}
-                                </Badge>
-                              )}
-                              {article.isFeatured && (
-                                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 text-xs">
-                                  <Star className="h-3 w-3 mr-1" />
-                                  {t.featured}
-                                </Badge>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">Published Content</span>
+                      <span className="font-semibold">{stats.publishedArticles + stats.publishedVideos}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">Draft Content</span>
+                      <span className="font-semibold">{stats.totalDrafts}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">Total Views</span>
+                      <span className="font-semibold">{stats.totalViews.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">Featured Content</span>
+                      <span className="font-semibold">{stats.featuredArticles + stats.featuredVideos}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600 dark:text-gray-300">Trending Content</span>
+                      <span className="font-semibold">{stats.trendingArticles + stats.trendingVideos}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    {t.recentActivity}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {recentActivity.length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No recent activity</p>
+                    ) : (
+                      recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800">
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-full ${
+                              activity.type === 'article' ? 'bg-blue-100 dark:bg-blue-900' : 'bg-green-100 dark:bg-green-900'
+                            }`}>
+                              {activity.type === 'article' ? (
+                                <FileText className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                              ) : (
+                                <Video className="h-3 w-3 text-green-600 dark:text-green-400" />
                               )}
                             </div>
+                            <div>
+                              <p className="text-sm font-medium truncate max-w-[150px]">{activity.title}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {new Date(activity.date).toLocaleDateString()}
+                              </p>
+                            </div>
                           </div>
-                          
-                          {/* Improved Description for Mobile */}
-                          <div className="mb-3">
-                            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed line-clamp-3 break-words">
-                              {getDisplayText(article.description) || 'No description available'}
-                            </p>
-                          </div>
-                          
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span className="bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded">
-                              {formatCategory(article.category)}
-                            </span>
-                            <span>{new Date(article.createdAt).toLocaleDateString()}</span>
-                            {article.createdByUsername && (
-                              <span>by {article.createdByUsername}</span>
+                          <div className="flex gap-1">
+                            {activity.isFeatured && (
+                              <Star className="h-3 w-3 text-yellow-500" />
+                            )}
+                            {activity.isTrending && (
+                              <TrendingUp className="h-3 w-3 text-orange-500" />
                             )}
                           </div>
                         </div>
-                        
-                        {/* Action Buttons - Improved Mobile Layout */}
-                        <div className="flex flex-wrap gap-2 justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-600">
-                          <div className="flex gap-1">
-                            {/* Trending Toggle */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleTrending(article._id, article.isTrending)}
-                              className={`h-8 px-2 sm:px-3 ${
-                                article.isTrending 
-                                  ? 'text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' 
-                                  : 'text-gray-600 border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900/20'
-                              }`}
-                              title={article.isTrending ? t.removeTrending : t.markTrending}
-                            >
-                              <TrendingUp className="h-3 w-3 sm:mr-1" />
-                              <span className="hidden sm:inline text-xs">
-                                {article.isTrending ? t.removeTrending : t.markTrending}
-                              </span>
-                            </Button>
-
-                            {/* Featured Toggle */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleFeatured(article._id, article.isFeatured)}
-                              className={`h-8 px-2 sm:px-3 ${
-                                article.isFeatured 
-                                  ? 'text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20' 
-                                  : 'text-gray-600 border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900/20'
-                              }`}
-                              title={article.isFeatured ? t.removeFeatured : t.markFeatured}
-                            >
-                              <Star className="h-3 w-3 sm:mr-1" />
-                              <span className="hidden sm:inline text-xs">
-                                {article.isFeatured ? t.removeFeatured : t.markFeatured}
-                              </span>
-                            </Button>
-                          </div>
-                          
-                          <div className="flex gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditArticle(article)}
-                              className="h-8 w-8 p-0"
-                              title={t.edit}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(`/article/${article._id}`, '_blank')}
-                              className="h-8 w-8 p-0"
-                              title={t.view}
-                            >
-                              <Eye className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete('article', article._id)}
-                              disabled={deletingId === article._id}
-                              className="h-8 w-8 p-0 text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                              title={t.delete}
-                            >
-                              {deletingId === article._id ? (
-                                <div className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
-                              ) : (
-                                <Trash2 className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>Manage your content quickly</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button 
+                    onClick={startCreateArticle}
+                    className="h-16 flex-col gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 border-2 border-dashed border-blue-200 dark:border-blue-800"
+                    variant="ghost"
+                  >
+                    <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <span className="text-blue-700 dark:text-blue-300">{t.createArticle}</span>
+                  </Button>
+                  <Button 
+                    onClick={startCreateVideo}
+                    className="h-16 flex-col gap-2 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900 border-2 border-dashed border-green-200 dark:border-green-800"
+                    variant="ghost"
+                  >
+                    <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
+                    <span className="text-green-700 dark:text-green-300">{t.createVideo}</span>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* My Videos Tab - Improved Mobile Layout */}
-          <TabsContent value="my-videos">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2">
-                  <Video className="h-5 w-5 text-blue-600" />
-                  {t.myVideos}
-                </CardTitle>
-                <CardDescription>
-                  Manage your published videos and drafts
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {userVideos.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Video className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 dark:text-gray-400 text-lg">{t.noVideos}</p>
-                    <Button 
-                      onClick={() => setActiveTab('add-video')}
-                      className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      {t.addVideo}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {userVideos.map((video) => (
-                      <div
-                        key={video._id}
-                        className="flex flex-col p-4 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow"
-                      >
-                        {/* Content Section */}
-                        <div className="flex-1 min-w-0 mb-3">
-                          <div className="flex flex-col gap-2 mb-2">
-                            <h3 className="font-semibold text-base sm:text-lg break-words">
-                              {getDisplayText(video.title)}
-                            </h3>
-                            <Badge 
-                              variant={video.status === 'published' ? 'default' : 'secondary'}
-                              className={video.status === 'published' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs' 
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs'
-                              }
-                            >
-                              {video.status === 'published' ? t.published : t.draft}
+          {/* Articles Tab */}
+          <TabsContent value="articles">
+            {filteredArticles.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t.noArticles}</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first article</p>
+                  <Button onClick={startCreateArticle}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t.createArticle}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredArticles.map((article) => (
+                  <Card key={article._id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <Badge variant={article.status === 'published' ? 'default' : 'secondary'}>
+                              {article.status}
                             </Badge>
-                          </div>
-                          
-                          {/* Improved Description for Mobile */}
-                          <div className="mb-3">
-                            <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed line-clamp-3 break-words">
-                              {getDisplayText(video.description) || 'No description available'}
-                            </p>
-                          </div>
-                          
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span className="bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded">
-                              {formatPlatform(video.platform)}
-                            </span>
-                            <span>{new Date(video.createdAt).toLocaleDateString()}</span>
-                            {video.createdByUsername && (
-                              <span>by {video.createdByUsername}</span>
+                            <Badge variant="outline" className="capitalize">{article.category}</Badge>
+                            {article.isFeatured && (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                                <Star className="h-3 w-3 mr-1" />
+                                {t.featured}
+                              </Badge>
                             )}
+                            {article.isTrending && (
+                              <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                                {t.trending}
+                              </Badge>
+                            )}
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {new Date(article.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-lg mb-2 line-clamp-1">
+                            {getDisplayText(article.title)}
+                          </h3>
+                          <p className="text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                            {getDisplayText(article.description)}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-4 w-4" />
+                              {article.views || 0} views
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Users className="h-4 w-4" />
+                              {article.likes || 0} likes
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              {article.readTime || '5 min read'}
+                            </div>
                           </div>
                         </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-600">
-                          <div className="flex gap-2">
+                        <div className="flex gap-2 sm:flex-col">
+                          <div className="flex gap-1 sm:flex-col">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEditVideo(video)}
-                              className="h-8 px-3 text-xs"
+                              onClick={() => handleToggleFeatured(article._id, 'article', article.isFeatured || false)}
+                              className={`flex items-center gap-1 ${
+                                article.isFeatured ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : ''
+                              }`}
                             >
-                              <Edit className="h-3 w-3 mr-1" />
+                              <Star className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleTrending(article._id, 'article', article.isTrending || false)}
+                              className={`flex items-center gap-1 ${
+                                article.isTrending ? 'bg-orange-100 text-orange-800 border-orange-300' : ''
+                              }`}
+                            >
+                              <TrendingUp className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex gap-1 sm:flex-col">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startEditArticle(article)}
+                              className="flex items-center gap-1"
+                            >
+                              <Edit className="h-3 w-3" />
                               {t.edit}
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => window.open(video.videoUrl, '_blank')}
-                              className="h-8 px-3 text-xs"
+                              onClick={() => handleDelete(article._id, 'article')}
+                              className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
-                              <Eye className="h-3 w-3 mr-1" />
-                              {t.view}
+                              <Trash2 className="h-3 w-3" />
+                              {t.delete}
                             </Button>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete('video', video._id)}
-                            disabled={deletingId === video._id}
-                            className="h-8 px-3 text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 text-xs"
-                          >
-                            {deletingId === video._id ? (
-                              <>
-                                <div className="h-3 w-3 animate-spin rounded-full border-2 border-red-600 border-t-transparent mr-1" />
-                                Deleting...
-                              </>
-                            ) : (
-                              <>
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                {t.delete}
-                              </>
-                            )}
-                          </Button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Videos Tab */}
+          <TabsContent value="videos">
+            {filteredVideos.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Video className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t.noVideos}</h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first video</p>
+                  <Button onClick={startCreateVideo}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t.createVideo}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                {filteredVideos.map((video) => (
+                  <Card key={video._id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-green-500">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-3">
+                            <Badge variant={video.status === 'published' ? 'default' : 'secondary'}>
+                              {video.status}
+                            </Badge>
+                            <Badge variant="outline" className="capitalize">{video.category}</Badge>
+                            <Badge variant="outline">{video.platform}</Badge>
+                            {video.isFeatured && (
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300">
+                                <Star className="h-3 w-3 mr-1" />
+                                {t.featured}
+                              </Badge>
+                            )}
+                            {video.isTrending && (
+                              <Badge variant="secondary" className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300">
+                                <TrendingUp className="h-3 w-3 mr-1" />
+                                {t.trending}
+                              </Badge>
+                            )}
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              {new Date(video.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-lg mb-2 line-clamp-1">
+                            {getDisplayText(video.title)}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
+                            <div className="flex items-center gap-1">
+                              <Eye className="h-4 w-4" />
+                              {video.views || 0} views
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Video className="h-4 w-4" />
+                              {video.platform}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 sm:flex-col">
+                          <div className="flex gap-1 sm:flex-col">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleFeatured(video._id, 'video', video.isFeatured || false)}
+                              className={`flex items-center gap-1 ${
+                                video.isFeatured ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : ''
+                              }`}
+                            >
+                              <Star className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleTrending(video._id, 'video', video.isTrending || false)}
+                              className={`flex items-center gap-1 ${
+                                video.isTrending ? 'bg-orange-100 text-orange-800 border-orange-300' : ''
+                              }`}
+                            >
+                              <TrendingUp className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <div className="flex gap-1 sm:flex-col">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => startEditVideo(video)}
+                              className="flex items-center gap-1"
+                            >
+                              <Edit className="h-3 w-3" />
+                              {t.edit}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(video._id, 'video')}
+                              className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              {t.delete}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
     </div>
-  );
-}
-
-export default function Dashboard() {
-  return (
-    <ProtectedRoute>
-      <DashboardContent />
-    </ProtectedRoute>
   );
 }

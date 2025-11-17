@@ -301,15 +301,20 @@ export default function Header() {
             </div>
             <ThemeToggle />
             {isAuthenticated ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="rounded-lg hidden md:flex font-medium"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                {t.logout}
-              </Button>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground hidden lg:block">
+                  Welcome, {currentUser?.username}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="rounded-lg hidden md:flex font-medium"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  {t.logout}
+                </Button>
+              </div>
             ) : (
               <Button
                 variant="ghost"
@@ -418,14 +423,19 @@ export default function Header() {
                   </div>
                   <ThemeToggle />
                   {isAuthenticated && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLogout}
-                      className="whitespace-nowrap"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {currentUser?.username}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLogout}
+                        className="whitespace-nowrap"
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>

@@ -5,29 +5,21 @@ import ArticleModal from '@/components/ArticleModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, Filter, TrendingUp, Star, Calendar, Users, ArrowRight, BookOpen, Eye, Clock, RefreshCw } from 'lucide-react';
+import { Search, TrendingUp, Star, BookOpen, Eye, Users, Clock, ArrowRight, RefreshCw } from 'lucide-react';
 
 const translations = {
   en: { 
     topNews: 'Top News', 
     featured: 'Featured', 
     trending: 'Trending',
-    latest: 'Latest',
     popular: 'Popular',
     search: 'Search articles...', 
     filter: 'Filter by category', 
     all: 'All', 
     noResults: 'No articles found',
     loading: 'Loading articles...',
-    readMore: 'Read More',
     seeAll: 'See All',
-    breakingNews: 'Breaking News',
-    topStories: 'Top Stories',
-    featuredArticle: 'Featured Article',
-    minutesRead: 'min read',
-    views: 'views',
     totalArticles: 'Total Articles',
     dailyViews: 'Daily Views',
     readers: 'Readers',
@@ -45,20 +37,13 @@ const translations = {
     topNews: 'أهم الأخبار', 
     featured: 'مميز', 
     trending: 'الشائع',
-    latest: 'الأحدث',
     popular: 'الأكثر شهرة',
     search: 'ابحث عن المقالات...', 
     filter: 'تصفية حسب الفئة', 
     all: 'الكل', 
     noResults: 'لم يتم العثور على مقالات',
     loading: 'جاري تحميل المقالات...',
-    readMore: 'اقرأ المزيد',
     seeAll: 'عرض الكل',
-    breakingNews: 'أخبار عاجلة',
-    topStories: 'أهم القصص',
-    featuredArticle: 'مقال مميز',
-    minutesRead: 'دقيقة قراءة',
-    views: 'مشاهدة',
     totalArticles: 'إجمالي المقالات',
     dailyViews: 'المشاهدات اليومية',
     readers: 'القراء',
@@ -76,20 +61,13 @@ const translations = {
     topNews: 'اہم خبریں', 
     featured: 'نمایاں', 
     trending: 'مقبول',
-    latest: 'تازہ ترین',
     popular: 'مشہور',
     search: 'مضامین تلاش کریں...', 
     filter: 'زمرے کے لحاظ سے فلٹر کریں', 
     all: 'تمام', 
     noResults: 'کوئی مضمون نہیں ملا',
     loading: 'مضامین لوڈ ہو رہے ہیں...',
-    readMore: 'مزید پڑھیں',
     seeAll: 'سب دیکھیں',
-    breakingNews: 'بریکنگ نیوز',
-    topStories: 'اہم کہانیاں',
-    featuredArticle: 'نمایاں مضمون',
-    minutesRead: 'منٹ کی قرات',
-    views: 'ویوز',
     totalArticles: 'کل مضامین',
     dailyViews: 'روزانہ ویوز',
     readers: 'قارئین',
@@ -119,26 +97,43 @@ export default function Home() {
   
   const t = translations[language as 'en' | 'ar' | 'ur'];
 
-  // Fetch articles from backend
   const fetchArticles = async () => {
     try {
       setLoading(true);
       setRefreshing(true);
       setError(null);
       
+      console.log('🔍 Fetching articles from API...');
       const response = await fetch('https://globalpulse-news-production-31ee.up.railway.app/api/articles');
       
       if (response.ok) {
-        const data = await response.json();
-        console.log('📰 Fetched articles from API:', data.length);
-        setArticles(data);
+        const result = await response.json();
+        console.log('📰 Raw API response:', result);
+        
+        // Handle different response formats
+        let articlesArray = [];
+        
+        if (Array.isArray(result)) {
+          articlesArray = result;
+        } else if (result && Array.isArray(result.data)) {
+          articlesArray = result.data;
+        } else if (result && Array.isArray(result.articles)) {
+          articlesArray = result.articles;
+        } else {
+          console.warn('⚠️ API response structure unexpected:', result);
+          articlesArray = [];
+        }
+        
+        console.log(`✅ Successfully loaded ${articlesArray.length} articles from backend`);
+        setArticles(articlesArray);
       } else {
-        throw new Error('Failed to fetch articles');
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
     } catch (error) {
       console.error('❌ Error fetching articles:', error);
       setError('Failed to load articles from server');
-      setArticles([]);
+      setArticles([]); // Empty array - no default content
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -149,7 +144,6 @@ export default function Home() {
     fetchArticles();
   }, []);
 
-  // Helper function to safely extract text
   const getDisplayText = (textObject: any): string => {
     if (!textObject) return 'No description available';
     if (typeof textObject === 'string') return textObject;
@@ -174,7 +168,11 @@ export default function Home() {
   };
 
   const filteredArticles = useMemo(() => {
-    let filtered = articles.filter(article => {
+    const safeArticles = Array.isArray(articles) ? articles : [];
+    
+    let filtered = safeArticles.filter(article => {
+      if (!article) return false;
+      
       const articleTitle = getDisplayText(article.title);
       const articleDescription = getDisplayText(article.description);
       
@@ -192,16 +190,25 @@ export default function Home() {
       filtered = filtered.filter(article => article.isFeatured);
     } else if (selectedTab === 'popular') {
       filtered = filtered.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else if (selectedTab === 'trending') {
+      filtered = filtered.filter(article => article.isTrending);
     }
 
     return filtered;
   }, [articles, searchQuery, categoryFilter, selectedTab, language]);
 
-  // Get trending articles
   const trendingArticles = useMemo(() => {
-    return [...articles]
-      .filter(article => article.isTrending || (article.views || 0) > 100)
-      .sort((a, b) => (b.views || 0) - (a.views || 0))
+    const safeArticles = Array.isArray(articles) ? articles : [];
+    return safeArticles
+      .filter(article => article?.isTrending)
+      .sort((a, b) => (b?.views || 0) - (a?.views || 0))
+      .slice(0, 4);
+  }, [articles]);
+
+  const featuredArticles = useMemo(() => {
+    const safeArticles = Array.isArray(articles) ? articles : [];
+    return safeArticles
+      .filter(article => article?.isFeatured)
       .slice(0, 4);
   }, [articles]);
 
@@ -216,7 +223,16 @@ export default function Home() {
   };
 
   const handleSeeAllTrending = () => {
-    setSelectedTab('popular');
+    setSelectedTab('trending');
+    setCategoryFilter('all');
+    setSearchQuery('');
+    setTimeout(() => {
+      document.getElementById('articles-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handleSeeAllFeatured = () => {
+    setSelectedTab('featured');
     setCategoryFilter('all');
     setSearchQuery('');
     setTimeout(() => {
@@ -277,7 +293,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
-        {/* Header Section - Justified text for mobile */}
+        {/* Header Section */}
         <div className="text-center mb-6 sm:mb-10">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-3 leading-tight text-justify sm:text-center">
             {t.topNews}
@@ -336,23 +352,25 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Stats Section */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8">
-          {[
-            { icon: BookOpen, color: 'text-gray-600', value: `${articles.length}+`, label: t.totalArticles },
-            { icon: Eye, color: 'text-gray-600', value: '15K+', label: t.dailyViews },
-            { icon: Users, color: 'text-gray-600', value: '50K+', label: t.readers },
-            { icon: Clock, color: 'text-gray-600', value: '24/7', label: t.updated }
-          ].map((stat, index) => (
-            <div key={index} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-2 sm:p-3 md:p-4 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
-              <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color} mx-auto mb-1`} />
-              <div className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">{stat.value}</div>
-              <div className="text-xs text-gray-600 dark:text-gray-300">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+        {/* Stats Section - Only show if we have articles */}
+        {articles.length > 0 && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8">
+            {[
+              { icon: BookOpen, color: 'text-gray-600', value: `${articles.length}+`, label: t.totalArticles },
+              { icon: Eye, color: 'text-gray-600', value: `${articles.reduce((sum, article) => sum + (article.views || 0), 0).toLocaleString()}+`, label: t.dailyViews },
+              { icon: Users, color: 'text-gray-600', value: `${articles.reduce((sum, article) => sum + (article.likes || 0), 0).toLocaleString()}+`, label: t.readers },
+              { icon: Clock, color: 'text-gray-600', value: '24/7', label: t.updated }
+            ].map((stat, index) => (
+              <div key={index} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-2 sm:p-3 md:p-4 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color} mx-auto mb-1`} />
+                <div className="text-sm sm:text-base font-bold text-gray-900 dark:text-white">{stat.value}</div>
+                <div className="text-xs text-gray-600 dark:text-gray-300">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* Trending Section */}
+        {/* Trending Section - Only show if we have trending articles */}
         {trendingArticles.length > 0 && (
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
@@ -391,6 +409,45 @@ export default function Home() {
           </div>
         )}
 
+        {/* Featured Section - Only show if we have featured articles */}
+        {featuredArticles.length > 0 && (
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+              <div className="flex items-center space-x-2">
+                <Star className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{t.featured}</h2>
+              </div>
+              <Button 
+                onClick={handleSeeAllFeatured}
+                variant="outline"
+                className="border-gray-600 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-800 font-medium rounded-lg px-2 sm:px-3 py-1 transition-all duration-300 active:scale-95 w-full sm:w-auto text-xs sm:text-sm"
+                size="sm"
+              >
+                {t.seeAll}
+                <ArrowRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              {featuredArticles.map((article) => (
+                <NewsCard
+                  key={article._id}
+                  title={getDisplayText(article.title)}
+                  description={getDisplayText(article.description)}
+                  category={formatCategory(article.category)}
+                  imageUrl={article.imageUrl}
+                  timeAgo={new Date(article.createdAt).toLocaleDateString()}
+                  views={article.views || 0}
+                  readTime={article.readTime || '5 min read'}
+                  onReadMore={() => handleReadMore(article)}
+                  compact={true}
+                  isTrending={article.isTrending}
+                  isFeatured={article.isFeatured}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Main Content Tabs */}
         <div id="articles-section">
           <Tabs value={selectedTab} onValueChange={handleTabChange} className="mb-4 sm:mb-6">
@@ -398,6 +455,7 @@ export default function Home() {
               {[
                 { value: 'all', label: t.all, icon: null },
                 { value: 'featured', label: t.featured, icon: Star },
+                { value: 'trending', label: t.trending, icon: TrendingUp },
                 { value: 'popular', label: t.popular, icon: TrendingUp }
               ].map((tab) => (
                 <TabsTrigger 
@@ -411,13 +469,15 @@ export default function Home() {
               ))}
             </TabsList>
 
-            {['all', 'featured', 'popular'].map((tabValue) => (
+            {['all', 'featured', 'trending', 'popular'].map((tabValue) => (
               <TabsContent key={tabValue} value={tabValue} className="mt-0">
                 {filteredArticles.length === 0 ? (
                   <div className="text-center py-6 sm:py-8">
                     <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 max-w-md mx-auto">
                       {tabValue === 'featured' ? (
                         <Star className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />
+                      ) : tabValue === 'trending' ? (
+                        <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />
                       ) : tabValue === 'popular' ? (
                         <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />
                       ) : (
@@ -426,7 +486,16 @@ export default function Home() {
                       <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base mb-2 text-justify sm:text-center">
                         {t.noResults}
                       </p>
-                      {articles.length > 0 && (
+                      {articles.length === 0 ? (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 text-justify sm:text-center">
+                          {language === 'ar' 
+                            ? 'لا توجد مقالات متاحة حالياً'
+                            : language === 'ur'
+                            ? 'فی الحال کوئی مضامین دستیاب نہیں ہیں'
+                            : 'No articles available at the moment'
+                          }
+                        </p>
+                      ) : (
                         <p className="text-xs text-gray-500 dark:text-gray-400 text-justify sm:text-center">
                           {language === 'ar' 
                             ? 'حاول تغيير معايير البحث أو التصفية'

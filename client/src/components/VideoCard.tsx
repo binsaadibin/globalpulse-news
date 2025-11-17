@@ -1,17 +1,18 @@
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Play, Eye, Calendar, Youtube, Facebook, Instagram, Music } from 'lucide-react';
+import { Play, Eye, Calendar, Youtube, Facebook, Instagram, Music, MoreVertical } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface VideoCardProps {
   title: string;
-  description: string;
   platform: string;
   videoUrl: string;
   views?: number;
   createdAt: string;
   language: string;
   videoId?: string;
+  thumbnailUrl?: string;
+  className?: string;
 }
 
 // Function to format view counts dynamically
@@ -34,29 +35,101 @@ const formatViews = (views: number, language: string): string => {
   return views.toString();
 };
 
+// Enhanced YouTube ID extraction
+const getYouTubeId = (url: string): string | null => {
+  if (!url) return null;
+  
+  try {
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+    return match && match[1] ? match[1] : null;
+  } catch (error) {
+    console.error('Error parsing YouTube URL:', error);
+    return null;
+  }
+};
+
+// Get platform from URL
+const getPlatformFromUrl = (url: string): string => {
+  if (!url) return 'video';
+  
+  const urlLower = url.toLowerCase();
+  if (urlLower.includes('youtube') || urlLower.includes('youtu.be')) return 'youtube';
+  if (urlLower.includes('facebook')) return 'facebook';
+  if (urlLower.includes('tiktok')) return 'tiktok';
+  if (urlLower.includes('instagram')) return 'instagram';
+  
+  return 'video';
+};
+
+// Format time ago
+const getTimeAgo = (dateString: string, language: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) {
+    return language === 'ar' ? 'الآن' : language === 'ur' ? 'ابھی' : 'Just now';
+  }
+  
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return language === 'ar' 
+      ? `قبل ${diffInMinutes} دقيقة` 
+      : language === 'ur' 
+      ? `${diffInMinutes} منٹ پہلے` 
+      : `${diffInMinutes} min ago`;
+  }
+  
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return language === 'ar' 
+      ? `قبل ${diffInHours} ساعة` 
+      : language === 'ur' 
+      ? `${diffInHours} گھنٹے پہلے` 
+      : `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) {
+    return language === 'ar' 
+      ? `قبل ${diffInDays} يوم` 
+      : language === 'ur' 
+      ? `${diffInDays} دن پہلے` 
+      : `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  }
+  
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  if (diffInWeeks < 4) {
+    return language === 'ar' 
+      ? `قبل ${diffInWeeks} أسبوع` 
+      : language === 'ur' 
+      ? `${diffInWeeks} ہفتے پہلے` 
+      : `${diffInWeeks} week${diffInWeeks > 1 ? 's' : ''} ago`;
+  }
+  
+  return new Date(dateString).toLocaleDateString();
+};
+
 export default function VideoCard({ 
   title, 
-  description, 
   platform, 
   videoUrl,
   views = 0,
   createdAt,
   language,
-  videoId
+  videoId,
+  thumbnailUrl,
+  className = ''
 }: VideoCardProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentViews, setCurrentViews] = useState(views);
   const [isTrackingView, setIsTrackingView] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Extract YouTube video ID
-  const getYouTubeId = (url: string): string | null => {
-    if (!url) return null;
-    
-    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
-    const match = url.match(regex);
-    return match && match[1] ? match[1] : null;
-  };
-
+  // Determine actual platform and video ID
+  const actualPlatform = platform || getPlatformFromUrl(videoUrl);
   const videoIdFromUrl = getYouTubeId(videoUrl);
 
   // Track view when video starts playing
@@ -100,7 +173,6 @@ export default function VideoCard({
       }
     };
 
-    // Update views every 30 seconds when video is playing
     let interval: NodeJS.Timeout;
     if (isPlaying) {
       updateViews(); // Initial update
@@ -112,19 +184,23 @@ export default function VideoCard({
     };
   }, [videoId, isPlaying]);
 
-  const handlePlayClick = () => {
-    // Track view first, then play
-    trackView();
+  const handlePlayClick = async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    await trackView();
     setIsPlaying(true);
+    setIsLoading(false);
   };
 
-  // Get YouTube thumbnail
+  // Get YouTube thumbnail with fallback
   const getThumbnailUrl = (id: string | null) => {
+    if (thumbnailUrl) return thumbnailUrl;
     if (!id) return null;
     return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
   };
 
-  const thumbnailUrl = getThumbnailUrl(videoIdFromUrl);
+  const finalThumbnailUrl = getThumbnailUrl(videoIdFromUrl);
 
   const getPlatformIcon = (platform: string) => {
     const platformLower = platform.toLowerCase();
@@ -132,7 +208,8 @@ export default function VideoCard({
       youtube: Youtube,
       facebook: Facebook,
       tiktok: Music,
-      instagram: Instagram
+      instagram: Instagram,
+      video: Play
     };
     return icons[platformLower] || Play;
   };
@@ -140,20 +217,23 @@ export default function VideoCard({
   const getPlatformColor = (platform: string) => {
     const platformLower = platform.toLowerCase();
     const colors: { [key: string]: string } = {
-      youtube: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800',
-      facebook: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800',
-      tiktok: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700/30 dark:text-gray-300 dark:border-gray-600',
-      instagram: 'bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-900/30 dark:text-pink-300 dark:border-pink-800'
+      youtube: 'bg-red-600 text-white',
+      facebook: 'bg-blue-600 text-white',
+      tiktok: 'bg-black text-white',
+      instagram: 'bg-pink-600 text-white',
+      video: 'bg-gray-600 text-white'
     };
-    return colors[platformLower] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700/30 dark:text-gray-300 dark:border-gray-600';
+    return colors[platformLower] || 'bg-gray-600 text-white';
   };
 
-  const PlatformIcon = getPlatformIcon(platform);
+  const PlatformIcon = getPlatformIcon(actualPlatform);
   const formattedViews = formatViews(currentViews, language);
+  const timeAgo = getTimeAgo(createdAt, language);
+  const isListView = className.includes('flex-row');
 
   if (isPlaying && videoIdFromUrl) {
     return (
-      <Card className="w-full overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 shadow-lg bg-white dark:bg-gray-900">
+      <Card className={`w-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 ${className}`}>
         {/* Embedded YouTube Player */}
         <div className="relative aspect-video bg-black">
           <iframe
@@ -164,23 +244,72 @@ export default function VideoCard({
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
+          {/* Close button */}
+          <button
+            onClick={() => setIsPlaying(false)}
+            className="absolute top-2 right-2 bg-black bg-opacity-50 text-white p-1 rounded-full hover:bg-opacity-70 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
         
         <CardContent className="p-4">
           <h3 className="font-bold text-lg mb-2 leading-tight text-gray-900 dark:text-white">
             {title}
           </h3>
-          <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-            {description}
-          </p>
-          <div className="mt-3 flex items-center justify-between">
-            <Badge className={`${getPlatformColor(platform)} text-xs font-semibold border`}>
+          <div className="flex items-center justify-between">
+            <Badge className={`${getPlatformColor(actualPlatform)} text-xs font-semibold`}>
               <PlatformIcon className="h-3 w-3 mr-1" />
-              {platform}
+              {actualPlatform}
             </Badge>
             <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
               <Eye className="h-3 w-3 mr-1" />
-              {formattedViews} {language === 'ar' ? 'مشاهدة' : language === 'ur' ? 'ویوز' : 'views'}
+              {formattedViews}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // For non-YouTube videos, open in new tab
+  const handleNonYouTubeClick = () => {
+    window.open(videoUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  if (isPlaying && !videoIdFromUrl) {
+    return (
+      <Card className={`w-full overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 ${className}`}>
+        <CardContent className="p-6 text-center">
+          <div className="max-w-md mx-auto">
+            <PlatformIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="font-bold text-lg mb-2 text-gray-900 dark:text-white">
+              {language === 'ar' ? 'فتح الفيديو' : language === 'ur' ? 'ویڈیو کھولیں' : 'Open Video'}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm">
+              {language === 'ar' 
+                ? 'سيتم فتح هذا الفيديو في نافذة جديدة' 
+                : language === 'ur' 
+                ? 'یہ ویڈیو ایک نئی ونڈو میں کھل جائے گی'
+                : 'This video will open in a new window'
+              }
+            </p>
+            <div className="flex gap-2 justify-center">
+              <button 
+                onClick={() => setIsPlaying(false)}
+                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                {language === 'ar' ? 'إلغاء' : language === 'ur' ? 'منسوخ کریں' : 'Cancel'}
+              </button>
+              <button 
+                onClick={handleNonYouTubeClick}
+                className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                {language === 'ar' ? 'فتح الفيديو' : language === 'ur' ? 'ویڈیو کھولیں' : 'Open Video'}
+              </button>
             </div>
           </div>
         </CardContent>
@@ -189,78 +318,96 @@ export default function VideoCard({
   }
 
   return (
-    <Card className="w-full overflow-hidden hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700 shadow-lg group cursor-pointer bg-white dark:bg-gray-900">
-      {/* Video Thumbnail with Play Button */}
+    <Card className={`w-full overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700 group cursor-pointer bg-white dark:bg-gray-900 ${className}`}>
+      {/* Video Thumbnail */}
       <div 
-        className="relative aspect-video bg-gray-900 overflow-hidden group"
-        onClick={handlePlayClick}
+        className={`relative bg-gray-900 overflow-hidden group ${isListView ? 'w-48 flex-shrink-0' : 'aspect-video'}`}
+        onClick={videoIdFromUrl ? handlePlayClick : () => setIsPlaying(true)}
       >
-        {thumbnailUrl ? (
+        {finalThumbnailUrl && !imageError ? (
           <>
             <img 
-              src={thumbnailUrl} 
+              src={finalThumbnailUrl} 
               alt={title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              onError={() => setImageError(true)}
+              loading="lazy"
             />
-            {/* Light overlay on hover */}
-            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300" />
+            {/* Dark overlay on hover */}
+            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300" />
           </>
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center">
-            <Play className="h-12 w-12 text-white opacity-80" />
+          <div className="w-full h-full bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
+            <Play className="h-8 w-8 text-white opacity-80" />
+          </div>
+        )}
+        
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
           </div>
         )}
         
         {/* Play button overlay */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-blue-500 rounded-full p-3 transform scale-100 group-hover:scale-110 transition-transform duration-300 shadow-lg">
-            <Play className="h-6 w-6 text-white fill-current" />
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+          <div className="bg-red-600 rounded-full p-3 transform scale-90 group-hover:scale-100 transition-transform duration-300 shadow-lg">
+            <Play className="h-5 w-5 text-white fill-current" />
           </div>
         </div>
         
-        {/* Platform badge */}
-        <div className="absolute top-3 right-3">
-          <Badge className={`${getPlatformColor(platform)} backdrop-blur-sm text-xs font-semibold border`}>
-            <PlatformIcon className="h-3 w-3 mr-1" />
-            {platform}
-          </Badge>
+        {/* Duration badge - Simulated for YouTube style */}
+        <div className="absolute bottom-2 right-2">
+          <div className="bg-black bg-opacity-80 text-white px-1.5 py-0.5 rounded text-xs font-semibold">
+            10:30
+          </div>
         </div>
         
         {/* View count on thumbnail */}
-        <div className="absolute bottom-3 right-3">
+        <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold flex items-center">
             <Eye className="h-3 w-3 mr-1" />
             {formattedViews}
           </div>
         </div>
-        
-        {/* Play text appears on hover */}
-        <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <span className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs font-semibold">
-            {language === 'ar' ? 'انقر للتشغيل' : language === 'ur' ? 'چلانے کے لیے کلک کریں' : 'Click to Play'}
-          </span>
-        </div>
       </div>
 
-      <CardContent className="p-4">
-        <h3 className="font-bold text-lg mb-2 line-clamp-2 leading-tight text-gray-900 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
-          {title}
-        </h3>
-        <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-2 leading-relaxed">
-          {description}
-        </p>
+      {/* Video Info */}
+      <CardContent className={`p-3 flex-1 ${isListView ? 'flex flex-col justify-between' : ''}`}>
+        <div className="flex items-start space-x-3">
+          {/* Channel avatar - simulated */}
+          <div className="flex-shrink-0">
+            <div className="w-9 h-9 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs font-bold">GP</span>
+            </div>
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-sm mb-1 leading-tight text-gray-900 dark:text-white line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
+              {title}
+            </h3>
+            
+            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-1">
+              <span>Global Pulse</span>
+              <Badge className={`${getPlatformColor(actualPlatform)} ml-2 text-xs px-1.5 py-0`}>
+                <PlatformIcon className="h-2.5 w-2.5 mr-0.5" />
+                {actualPlatform}
+              </Badge>
+            </div>
+            
+            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+              <span>{formattedViews} views</span>
+              <span className="mx-1">•</span>
+              <span>{timeAgo}</span>
+            </div>
+          </div>
+          
+          {/* More options button - YouTube style */}
+          <button className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+            <MoreVertical className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
       </CardContent>
-
-      <CardFooter className="p-4 pt-0 flex justify-between items-center">
-        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-          <Calendar className="h-3 w-3 mr-1" />
-          {new Date(createdAt).toLocaleDateString()}
-        </div>
-        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-          <Eye className="h-3 w-3 mr-1" />
-          {formattedViews} {language === 'ar' ? 'مشاهدة' : language === 'ur' ? 'ویوز' : 'views'}
-        </div>
-      </CardFooter>
     </Card>
   );
 }
