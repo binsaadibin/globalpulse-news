@@ -1,55 +1,36 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { setupVite, serveStatic, log } from "../vite";
 import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import cors from 'cors';
+import path from 'path';
+
+console.log('🚀 Server starting initialization...');
 
 const app = express();
 
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    await mongoose.connect('mongodb://127.0.0.1:27017/newsapp');
-    console.log(`✅ MongoDB Connected`);
-  } catch (error) {
-    console.log('⚠️ MongoDB not running - using mock authentication');
-  }
-};
-connectDB();
+// Add request logging middleware first
+app.use((req: Request, res: Response, next: NextFunction) => {
+  console.log(`📥 ${req.method} ${req.url}`);
+  next();
+});
 
-// CORS configuration - Using cors package
+// Basic middleware first
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false }));
+
+// CORS configuration
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'https://globalplus.netlify.app',
-      'https://globalpulse-news-production-31ee.up.railway.app',
-      'https://globalpulse-news.netlify.app'
-    ];
-    
-    // Check if the origin is in allowed list or is a Netlify subdomain
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.netlify.app')) {
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins for now to debug
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
 }));
 
 // Handle preflight requests
 app.options('*', cors());
 
-// Health check endpoint - specific for Railway
+// Simple health check endpoint
 app.get('/health', (req: Request, res: Response) => {
+  console.log('🏥 Health check called');
   res.status(200).json({ 
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -58,8 +39,9 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Root route for Railway health checks
+// Root route
 app.get('/', (req: Request, res: Response) => {
+  console.log('🏠 Root route called');
   res.json({ 
     status: 'OK', 
     message: 'GlobalPulse News API is running',
@@ -73,69 +55,42 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// Test route
+app.get('/test', (req: Request, res: Response) => {
+  console.log('🧪 Test route called');
+  res.json({ message: 'Test successful', timestamp: new Date().toISOString() });
+});
 
-// MOCK AUTH ROUTES
+// MOCK DATA STORAGE
+let articlesStorage: any[] = [];
+let videosStorage: any[] = [];
+
+// MOCK USERS
 const MOCK_USERS = [
   { id: '1', username: 'globalplus', password: 'globalplus@4455', role: 'admin' },
   { id: '2', username: 'globalnews', password: 'globalnews@4455', role: 'admin' },
   { id: '3', username: 'haroonosmani', password: 'haroon@1324', role: 'editor' },
 ];
 
-// ✅ COMPLETELY EMPTY - NO DEFAULT DATA
-let articlesStorage: any[] = []; // Empty array - no default articles
-
-let videosStorage: any[] = []; // Empty array - no default videos
-
-// ✅ FIXED: Improved authentication middleware
+// SIMPLIFIED AUTH MIDDLEWARE
 const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ message: 'Access token required' });
+  }
+
   try {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-    console.log('🔐 Auth check - Header:', authHeader ? 'Present' : 'Missing');
-    console.log('🔐 Auth check - Token:', token ? 'Present' : 'Missing');
-
-    if (!token) {
-      console.log('❌ No token provided');
-      return res.status(401).json({ 
-        success: false,
-        message: 'Access token required' 
-      });
+    const decoded = jwt.verify(token, 'fallback_secret') as any;
+    const user = MOCK_USERS.find(u => u.id === decoded.userId);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
     }
-
-    jwt.verify(token, 'fallback_secret', (err: any, decoded: any) => {
-      if (err) {
-        console.log('❌ Token verification failed:', err.message);
-        return res.status(403).json({ 
-          success: false,
-          message: 'Invalid or expired token' 
-        });
-      }
-
-      console.log('✅ Token verified for user ID:', decoded.userId);
-      
-      // Find user in mock users
-      const user = MOCK_USERS.find(u => u.id === decoded.userId);
-      if (!user) {
-        console.log('❌ User not found for ID:', decoded.userId);
-        return res.status(403).json({ 
-          success: false,
-          message: 'User not found' 
-        });
-      }
-
-      (req as any).user = decoded;
-      (req as any).userData = user; // Attach full user data
-      next();
-    });
+    (req as any).user = user;
+    next();
   } catch (error) {
-    console.error('❌ Auth middleware error:', error);
-    return res.status(500).json({ 
-      success: false,
-      message: 'Authentication error' 
-    });
+    return res.status(403).json({ message: 'Invalid token' });
   }
 };
 
@@ -167,14 +122,11 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
 
 app.get('/api/auth/me', authenticateToken, (req: Request, res: Response) => {
   try {
-    const decoded = (req as any).user;
-    const user = MOCK_USERS.find(u => u.id === decoded.userId);
-    
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
-    res.json({ id: user.id, username: user.username, role: user.role });
+    res.json({ 
+      id: (req as any).user.id, 
+      username: (req as any).user.username, 
+      role: (req as any).user.role 
+    });
   } catch (error) {
     res.status(401).json({ message: 'Invalid token' });
   }
@@ -187,7 +139,6 @@ app.get('/api/articles', (req: Request, res: Response) => {
   try {
     console.log('📰 Fetching published articles for home page');
     
-    // ✅ ONLY USER-CREATED ARTICLES - NO DEFAULT DATA
     const publishedArticles = articlesStorage
       .filter(article => article.status === 'published')
       .map(article => ({
@@ -199,12 +150,9 @@ app.get('/api/articles', (req: Request, res: Response) => {
       }));
     
     console.log('📊 Returning', publishedArticles.length, 'published articles');
-    
-    // ✅ FIX: Always return an array, even if empty
     res.json(publishedArticles);
   } catch (error) {
     console.error('Get articles error:', error);
-    // ✅ FIX: Return empty array on error
     res.json([]);
   }
 });
@@ -212,13 +160,7 @@ app.get('/api/articles', (req: Request, res: Response) => {
 // Create article - PROTECTED
 app.post('/api/articles', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
-    
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
-    console.log('📝 Creating article by:', user.username);
+    console.log('📝 Creating article by:', (req as any).user.username);
 
     const article = {
       _id: Date.now().toString(),
@@ -227,8 +169,8 @@ app.post('/api/articles', authenticateToken, (req: Request, res: Response) => {
       likes: 0,
       comments: [],
       readTime: req.body.readTime || '5 min read',
-      createdBy: user.id,
-      createdByUsername: user.username,
+      createdBy: (req as any).user.id,
+      createdByUsername: (req as any).user.username,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -250,13 +192,10 @@ app.post('/api/articles', authenticateToken, (req: Request, res: Response) => {
 // Get user's articles for dashboard - PROTECTED
 app.get('/api/articles/my-articles', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
+    console.log('📚 Fetching articles for user:', (req as any).user.username);
     
-    console.log('📚 Fetching articles for user:', user.username);
-    
-    // ✅ ONLY USER'S ARTICLES - NO DEFAULT DATA
     const userArticles = articlesStorage
-      .filter(article => article.createdBy === user.id)
+      .filter(article => article.createdBy === (req as any).user.id)
       .map(article => ({
         ...article,
         views: article.views || 0,
@@ -265,12 +204,9 @@ app.get('/api/articles/my-articles', authenticateToken, (req: Request, res: Resp
       }));
     
     console.log('📊 Returning', userArticles.length, 'articles for user');
-    
-    // ✅ FIX: Always return an array, even if empty
     res.json(userArticles);
   } catch (error) {
     console.error('Get my articles error:', error);
-    // ✅ FIX: Return empty array on error
     res.json([]);
   }
 });
@@ -278,17 +214,11 @@ app.get('/api/articles/my-articles', authenticateToken, (req: Request, res: Resp
 // Update article - PROTECTED
 app.put('/api/articles/:id', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
-    
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
     const articleId = req.params.id;
     console.log('✏️ Updating article:', articleId);
 
     const articleIndex = articlesStorage.findIndex(article => 
-      article._id === articleId && article.createdBy === user.id
+      article._id === articleId && article.createdBy === (req as any).user.id
     );
 
     if (articleIndex === -1) {
@@ -319,17 +249,11 @@ app.put('/api/articles/:id', authenticateToken, (req: Request, res: Response) =>
 // Delete article - PROTECTED
 app.delete('/api/articles/:id', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
-    
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
     const articleId = req.params.id;
     console.log('🗑️ Deleting article:', articleId);
 
     const articleIndex = articlesStorage.findIndex(article => 
-      article._id === articleId && article.createdBy === user.id
+      article._id === articleId && article.createdBy === (req as any).user.id
     );
 
     if (articleIndex === -1) {
@@ -493,67 +417,6 @@ app.post('/api/articles/:id/comments', (req: Request, res: Response) => {
   }
 });
 
-// Get article comments - PUBLIC
-app.get('/api/articles/:id/comments', (req: Request, res: Response) => {
-  try {
-    const articleId = req.params.id;
-    console.log('💬 Fetching comments for article:', articleId);
-
-    const article = articlesStorage.find(a => a._id === articleId);
-    
-    if (!article) {
-      return res.status(404).json({ message: 'Article not found' });
-    }
-
-    res.json({
-      comments: article.comments || [],
-      totalComments: (article.comments || []).length
-    });
-  } catch (error) {
-    console.error('Get comments error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Delete comment - PROTECTED
-app.delete('/api/articles/:articleId/comments/:commentId', authenticateToken, (req: Request, res: Response) => {
-  try {
-    const { articleId, commentId } = req.params;
-    console.log('🗑️ Deleting comment:', commentId, 'from article:', articleId);
-
-    const articleIndex = articlesStorage.findIndex(a => a._id === articleId);
-    
-    if (articleIndex === -1) {
-      return res.status(404).json({ message: 'Article not found' });
-    }
-
-    const article = articlesStorage[articleIndex];
-    
-    if (!Array.isArray(article.comments)) {
-      return res.status(404).json({ message: 'No comments found' });
-    }
-
-    const commentIndex = article.comments.findIndex(c => c.id === commentId);
-    
-    if (commentIndex === -1) {
-      return res.status(404).json({ message: 'Comment not found' });
-    }
-
-    const deletedComment = article.comments.splice(commentIndex, 1)[0];
-    article.updatedAt = new Date().toISOString();
-
-    res.json({
-      success: true,
-      message: 'Comment deleted successfully',
-      comment: deletedComment,
-      totalComments: article.comments.length
-    });
-  } catch (error) {
-    console.error('Delete comment error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
 // VIDEOS API ROUTES
 
 // Get all published videos - PUBLIC
@@ -561,15 +424,11 @@ app.get('/api/videos', (req: Request, res: Response) => {
   try {
     console.log('🎬 Fetching published videos for videos page');
     
-    // ✅ ONLY USER-CREATED VIDEOS - NO DEFAULT DATA
     const publishedVideos = videosStorage.filter(video => video.status === 'published');
     console.log('📊 Returning', publishedVideos.length, 'published videos');
-    
-    // ✅ FIX: Always return an array, even if empty
     res.json(publishedVideos);
   } catch (error) {
     console.error('Get videos error:', error);
-    // ✅ FIX: Return empty array on error
     res.json([]);
   }
 });
@@ -577,21 +436,15 @@ app.get('/api/videos', (req: Request, res: Response) => {
 // Create video - PROTECTED
 app.post('/api/videos', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
-    
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
-    console.log('🎥 Creating video by:', user.username);
+    console.log('🎥 Creating video by:', (req as any).user.username);
 
     const video = {
       _id: Date.now().toString(),
       ...req.body,
       views: 0,
       likes: 0,
-      createdBy: user.id,
-      createdByUsername: user.username,
+      createdBy: (req as any).user.id,
+      createdByUsername: (req as any).user.username,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -613,19 +466,13 @@ app.post('/api/videos', authenticateToken, (req: Request, res: Response) => {
 // Get user's videos for dashboard - PROTECTED
 app.get('/api/videos/my-videos', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
+    console.log('📹 Fetching videos for user:', (req as any).user.username);
     
-    console.log('📹 Fetching videos for user:', user.username);
-    
-    // ✅ ONLY USER'S VIDEOS - NO DEFAULT DATA
-    const userVideos = videosStorage.filter(video => video.createdBy === user.id);
+    const userVideos = videosStorage.filter(video => video.createdBy === (req as any).user.id);
     console.log('📊 Returning', userVideos.length, 'videos for user');
-    
-    // ✅ FIX: Always return an array, even if empty
     res.json(userVideos);
   } catch (error) {
     console.error('Get my videos error:', error);
-    // ✅ FIX: Return empty array on error
     res.json([]);
   }
 });
@@ -633,17 +480,11 @@ app.get('/api/videos/my-videos', authenticateToken, (req: Request, res: Response
 // Update video - PROTECTED
 app.put('/api/videos/:id', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
-    
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
     const videoId = req.params.id;
     console.log('✏️ Updating video:', videoId);
 
     const videoIndex = videosStorage.findIndex(video => 
-      video._id === videoId && video.createdBy === user.id
+      video._id === videoId && video.createdBy === (req as any).user.id
     );
 
     if (videoIndex === -1) {
@@ -672,17 +513,11 @@ app.put('/api/videos/:id', authenticateToken, (req: Request, res: Response) => {
 // Delete video - PROTECTED
 app.delete('/api/videos/:id', authenticateToken, (req: Request, res: Response) => {
   try {
-    const user = (req as any).userData;
-    
-    if (!user) {
-      return res.status(401).json({ message: 'User not found' });
-    }
-
     const videoId = req.params.id;
     console.log('🗑️ Deleting video:', videoId);
 
     const videoIndex = videosStorage.findIndex(video => 
-      video._id === videoId && video.createdBy === user.id
+      video._id === videoId && video.createdBy === (req as any).user.id
     );
 
     if (videoIndex === -1) {
@@ -853,7 +688,7 @@ app.get('/api/search', (req: Request, res: Response) => {
 
     const searchTerm = query.toLowerCase().trim();
     
-    // Search in articles - ONLY USER-CREATED
+    // Search in articles
     const articleResults = articlesStorage
       .filter(article => article.status === 'published')
       .filter(article => {
@@ -878,7 +713,7 @@ app.get('/api/search', (req: Request, res: Response) => {
         imageUrl: article.imageUrl
       }));
 
-    // Search in videos - ONLY USER-CREATED
+    // Search in videos
     const videoResults = videosStorage
       .filter(video => video.status === 'published')
       .filter(video => {
@@ -926,69 +761,67 @@ app.get('/api/search', (req: Request, res: Response) => {
   }
 });
 
-// Logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error('❌ Error:', err);
+  res.status(500).json({ message: 'Internal Server Error' });
+});
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
+// 404 handler
+app.use((req: Request, res: Response) => {
+  console.log('❌ 404 - Route not found:', req.method, req.url);
+  res.status(404).json({ message: 'Route not found' });
 });
 
 const httpServer = createServer(app);
 
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+// Start server
+const startServer = async () => {
+  try {
+    console.log('🔧 Environment:', process.env.NODE_ENV);
+    console.log('🔧 PORT:', process.env.PORT);
+    
+    const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+    
+    // In production, serve static files from dist folder
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🔧 Serving static files from dist folder');
+      app.use(express.static(path.join(__dirname, '../dist')));
+      
+      // Catch-all handler for SPA
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(__dirname, '../dist/index.html'));
+      });
+    }
 
-  res.status(status).json({ message });
-  throw err;
-});
+    httpServer.listen(port, "0.0.0.0", () => {
+      console.log('✅ Server successfully started!');
+      console.log(`✅ Listening on port ${port}`);
+      console.log(`✅ Health check: http://0.0.0.0:${port}/health`);
+      console.log(`✅ Root endpoint: http://0.0.0.0:${port}/`);
+      console.log(`✅ Test endpoint: http://0.0.0.0:${port}/test`);
+    });
 
-(async () => {
-  if (app.get("env") === "development") {
-    await setupVite(app, httpServer);
-  } else {
-    // serveStatic(app); // Commented out for production
-  }
+    // Handle server errors
+    httpServer.on('error', (error) => {
+      console.error('❌ Server error:', error);
+      process.exit(1);
+    });
 
-  console.log('🚀 Starting server...');
-  console.log('🔧 PORT:', process.env.PORT);
-  console.log('🔧 NODE_ENV:', process.env.NODE_ENV);
-  
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
-  
-  httpServer.listen({
-    port,
-    host: "0.0.0.0", // Important for Railway
-  }, () => {
-    console.log(`✅ Server running on port ${port}`);
-    console.log(`✅ Health check available at http://0.0.0.0:${port}/health`);
-    console.log(`✅ API endpoints available at http://0.0.0.0:${port}/api`);
-  }).on('error', (error) => {
-    console.error('❌ Server failed to start:', error);
+    // Handle process signals
+    process.on('SIGTERM', () => {
+      console.log('🛑 Received SIGTERM, shutting down gracefully');
+      httpServer.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+    });
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
-  });
-})();
+  }
+};
+
+// Start the server
+startServer();
