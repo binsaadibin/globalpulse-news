@@ -1,42 +1,83 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose, { Document, Schema } from 'mongoose';
 
-export interface IUser extends mongoose.Document {
+export interface IUser extends Document {
   username: string;
+  email: string;
   password: string;
-  role: 'admin' | 'editor';
+  role: 'admin' | 'editor' | 'viewer';
+  isActive: boolean;
+  isApproved: boolean;
+  permissions: string[];
+  profile: {
+    firstName?: string;
+    lastName?: string;
+    avatar?: string;
+    bio?: string;
+  };
+  lastLogin?: Date;
+  loginAttempts: number;
+  lockUntil?: Date;
   createdAt: Date;
-  comparePassword(candidatePassword: string): Promise<boolean>;
+  updatedAt: Date;
 }
 
-const userSchema = new mongoose.Schema({
+const userSchema = new Schema<IUser>({
   username: {
     type: String,
     required: true,
     unique: true,
     trim: true,
+    index: true // Remove duplicate schema.index() calls
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true,
+    index: true // Remove duplicate schema.index() calls
   },
   password: {
     type: String,
     required: true,
+    minlength: 6
   },
   role: {
     type: String,
-    enum: ['admin', 'editor'],
-    default: 'editor',
+    enum: ['admin', 'editor', 'viewer'],
+    default: 'viewer'
   },
+  isActive: {
+    type: Boolean,
+    default: false
+  },
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  permissions: [{
+    type: String,
+    enum: ['create_articles', 'edit_articles', 'delete_articles', 'create_videos', 'edit_videos', 'delete_videos', 'manage_users']
+  }],
+  profile: {
+    firstName: String,
+    lastName: String,
+    avatar: String,
+    bio: String
+  },
+  lastLogin: Date,
+  loginAttempts: {
+    type: Number,
+    default: 0
+  },
+  lockUntil: Date
 }, {
-  timestamps: true,
+  timestamps: true
 });
 
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
+// Remove these duplicate index definitions to fix the warning
+// userSchema.index({ username: 1 });
+// userSchema.index({ email: 1 });
+userSchema.index({ isActive: 1, isApproved: 1 });
 
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
-};
-
-export const User = mongoose.model<IUser>('User', userSchema);
+export default mongoose.model<IUser>('User', userSchema);

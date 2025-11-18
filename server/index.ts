@@ -14,6 +14,8 @@ import path from 'path';
 import { fileURLToPath } from 'url'; // ADD THIS
 import { dirname } from 'path'; // ADD THIS
 
+
+
 // ADD THESE 2 LINES
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -788,53 +790,23 @@ app.use((req: Request, res: Response) => {
 
 const httpServer = createServer(app);
 
-// Start server
-const startServer = async () => {
-  try {
-    console.log('🔧 Environment:', process.env.NODE_ENV);
-    console.log('🔧 PORT:', process.env.PORT);
-    
-    const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
-    
-    // In production, serve static files from dist folder
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🔧 Serving static files from dist folder');
-      app.use(express.static(path.join(__dirname, '../dist')));
-      
-      // Catch-all handler for SPA
-      app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, '../dist/index.html'));
-      });
-    }
+const startServer = () => {
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+  
+  console.log('🚀 Starting production server...');
+  console.log('🔧 Port:', port);
+  console.log('🔧 Environment:', process.env.NODE_ENV);
 
-    httpServer.listen(port, "0.0.0.0", () => {
-      console.log('✅ Server successfully started!');
-      console.log(`✅ Listening on port ${port}`);
-      console.log(`✅ Health check: http://0.0.0.0:${port}/health`);
-      console.log(`✅ Root endpoint: http://0.0.0.0:${port}/`);
-      console.log(`✅ Test endpoint: http://0.0.0.0:${port}/test`);
-    });
+  httpServer.listen(port, "0.0.0.0", () => {
+    console.log('✅ PRODUCTION SERVER STARTED SUCCESSFULLY!');
+    console.log(`✅ Listening on port ${port}`);
+    console.log(`✅ Health check: http://0.0.0.0:${port}/health`);
+  });
 
-    // Handle server errors
-    httpServer.on('error', (error) => {
-      console.error('❌ Server error:', error);
-      process.exit(1);
-    });
-
-    // Handle process signals
-    process.on('SIGTERM', () => {
-      console.log('🛑 Received SIGTERM, shutting down gracefully');
-      httpServer.close(() => {
-        console.log('✅ Server closed');
-        process.exit(0);
-      });
-    });
-
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
+  httpServer.on('error', (error: Error) => {
+    console.error('❌ SERVER FAILED TO START:', error);
     process.exit(1);
-  }
+  });
 };
 
-// Start the server
 startServer();

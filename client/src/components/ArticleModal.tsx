@@ -87,6 +87,10 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
   const t = translations[language as 'en' | 'ar' | 'ur'];
 
   useEffect(() => {
+    console.log('🔍 ArticleModal - Received article:', article);
+    console.log('🔍 ArticleModal - Article ID:', article?._id);
+    console.log('🔍 ArticleModal - Article title:', article?.title);
+    
     if (article && isOpen) {
       fetchArticleData();
     }
@@ -97,23 +101,27 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
     
     try {
       setLoading(true);
-      // Use correct endpoint - no /details
+      console.log('📡 Fetching article details for:', article._id);
+      
       const response = await fetch(`${API_BASE_URL}/api/articles/${article._id}`);
+      
       if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setLikes(data.data.likes || 0);
-          setComments(data.data.comments || []);
-          setHasLiked(data.data.hasLiked || false);
-        }
+        const articleData = await response.json();
+        console.log('✅ Article details response:', articleData);
+        
+        // Your backend returns article directly, not wrapped in success/data
+        setLikes(articleData.likes || 0);
+        setComments(articleData.comments || []);
+        setHasLiked(articleData.hasLiked || false);
       } else {
-        // Fallback to article data from props
+        console.log('⚠️ Using fallback article data');
+        // Fallback to original article data
         setLikes(article.likes || 0);
         setComments(article.comments || []);
       }
     } catch (error) {
-      console.error('Error fetching article details:', error);
-      // Fallback to article props
+      console.error('❌ Error fetching article details:', error);
+      // Fallback to original article data
       setLikes(article.likes || 0);
       setComments(article.comments || []);
     } finally {
@@ -149,6 +157,7 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
       setLikes(newLikes);
       setHasLiked(!hasLiked);
 
+      console.log('❤️ Liking article:', article._id);
       const response = await fetch(`${API_BASE_URL}/api/articles/${article._id}/like`, {
         method: 'POST',
         headers: {
@@ -156,23 +165,23 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
         }
       });
       
-      if (!response.ok) {
+      const data = await response.json();
+      console.log('✅ Like response:', data);
+      
+      if (response.ok && data.success) {
+        // Use the actual response data
+        setLikes(data.likes);
+        setHasLiked(data.hasLiked);
+      } else {
         // Revert optimistic update if failed
         setLikes(hasLiked ? likes + 1 : likes - 1);
         setHasLiked(hasLiked);
-        throw new Error(t.likeError);
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setLikes(data.likes);
-        setHasLiked(data.hasLiked);
+        throw new Error(data.message || t.likeError);
       }
     } catch (error) {
-      console.error('Error liking article:', error);
+      console.error('❌ Error liking article:', error);
       toast({
         title: t.likeError,
-        description: t.likeError,
         variant: 'destructive'
       });
     }
@@ -183,6 +192,7 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
     
     try {
       setCommentLoading(true);
+      console.log('💬 Adding comment to article:', article._id);
       
       const response = await fetch(`${API_BASE_URL}/api/articles/${article._id}/comments`, {
         method: 'POST',
@@ -196,6 +206,7 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
       });
 
       const data = await response.json();
+      console.log('✅ Comment response:', data);
       
       if (response.ok && data.success) {
         setComments(prev => [data.comment, ...prev]);
@@ -208,7 +219,7 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
         throw new Error(data.message || t.commentError);
       }
     } catch (error: any) {
-      console.error('Error adding comment:', error);
+      console.error('❌ Error adding comment:', error);
       toast({
         title: t.commentError,
         description: error.message || t.commentError,
@@ -351,6 +362,15 @@ export default function ArticleModal({ article, isOpen, onClose }: ArticleModalP
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg whitespace-pre-line">
               {getDisplayText(article.description)}
             </p>
+            
+            {/* Show article content if available */}
+            {article.content && (
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                  {getDisplayText(article.content)}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
