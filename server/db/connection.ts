@@ -37,3 +37,28 @@ export const connectDB = async () => {
     process.exit(1);
   }
 };
+
+// ADD THIS FUNCTION - it was missing
+export const healthCheckDB = async () => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      return { 
+        status: 'healthy', 
+        message: 'Database connected successfully',
+        connectionState: 'connected'
+      };
+    } else {
+      return { 
+        status: 'unhealthy', 
+        message: 'Database not connected',
+        connectionState: mongoose.connection.readyState
+      };
+    }
+  } catch (error) {
+    return { 
+      status: 'unhealthy', 
+      message: 'Database health check failed',
+      error: error instanceof Error ? error.message : 'Unknown error' // ← FIXED THIS LINE
+    };
+  }
+};

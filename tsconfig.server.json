@@ -3,8 +3,8 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "dist-server",
-    "rootDir": "server"
+    "rootDir": "."
   },
-  "include": ["server/**/*"],
-  "exclude": ["node_modules", "dist", "client"]
+  "include": ["server/**/*", "shared/**/*"],
+  "exclude": ["node_modules", "dist", "client", "src", "**/*.test.ts"]
 }

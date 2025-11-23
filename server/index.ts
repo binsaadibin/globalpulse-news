@@ -163,7 +163,7 @@ app.get('/', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     documentation: '/api/docs',
     health: '/health',
-    status: '/api/status'
+    statusEndpoint: '/api/status'
   });
 });
 
