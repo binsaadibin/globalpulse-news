@@ -1,138 +1,319 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import cors from 'cors';
-import { connectDB } from './db/connection.js';
+import helmet from 'helmet';
+import compression from 'compression';
+import { connectDB, healthCheckDB } from './db/connection.js';
 import { setupRoutes } from './routes/index.js';
+import { apiRateLimit } from './middleware/rateLimit.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import { requestLogger } from './middleware/requestLogger.js';
 
-console.log('🚀 Server starting initialization...');
+console.log('🚀 GlobalPulse News API Server Starting...');
 
 const app = express();
 
-// Add request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`📥 ${req.method} ${req.url}`);
-  next();
-});
-
-// Basic middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false }));
-
-// CORS configuration - ENHANCED
-app.use(cors({
-  origin: ['http://localhost:3000', 'https://your-frontend-domain.vercel.app'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+// ========================
+// SECURITY MIDDLEWARE
+// ========================
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      scriptSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+    },
+  },
 }));
 
-// Handle preflight requests
-app.options('*', cors());
+// ========================
+// PERFORMANCE MIDDLEWARE
+// ========================
+app.use(compression());
 
-// Basic routes
-app.get('/health', (req: Request, res: Response) => {
-  res.status(200).json({ 
-    status: 'healthy',
+// ========================
+// REQUEST LOGGING
+// ========================
+app.use(requestLogger);
+
+// ========================
+// BODY PARSING
+// ========================
+app.use(express.json({ 
+  limit: '10mb',
+  verify: (req: any, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
+app.use(express.urlencoded({ 
+  extended: true,
+  limit: '10mb'
+}));
+
+// ========================
+// CORS CONFIGURATION - FIXED
+// ========================
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://globalpulse-news-production-31ee.up.railway.app',
+    'https://your-frontend-domain.vercel.app' // Add your actual frontend domain
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key'],
+  exposedHeaders: ['X-Response-Time', 'X-Powered-By']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+
+// ========================
+// RATE LIMITING
+// ========================
+app.use(apiRateLimit);
+
+// ========================
+// HEALTH CHECK & STATUS
+// ========================
+app.get('/health', async (req: Request, res: Response) => {
+  const dbHealth = await healthCheckDB();
+  const healthInfo = {
+    status: dbHealth.status === 'healthy' ? 'healthy' : 'unhealthy',
     timestamp: new Date().toISOString(),
     service: 'GlobalPulse News API',
     version: '1.0.0',
-    routes: ['/api/auth', '/api/articles', '/api/videos', '/api/admin', '/api/search']
-  });
+    environment: process.env.NODE_ENV || 'development',
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    database: dbHealth,
+    nodeVersion: process.version,
+  };
+
+  const statusCode = healthInfo.status === 'healthy' ? 200 : 503;
+  res.status(statusCode).json(healthInfo);
 });
 
-app.get('/', (req: Request, res: Response) => {
-  res.json({ 
-    status: 'OK', 
-    message: 'GlobalPulse News API is running',
+app.get('/api/status', (req: Request, res: Response) => {
+  res.json({
+    status: 'operational',
+    service: 'GlobalPulse News API',
+    version: '1.0.0',
     timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
     endpoints: {
-      health: '/health',
       auth: '/api/auth',
       articles: '/api/articles',
       videos: '/api/videos',
       admin: '/api/admin',
       search: '/api/search'
+    },
+    documentation: '/api/docs'
+  });
+});
+
+// ========================
+// API DOCUMENTATION
+// ========================
+app.get('/api/docs', (req: Request, res: Response) => {
+  res.json({
+    name: 'GlobalPulse News API',
+    version: '1.0.0',
+    description: 'Complete news management platform API',
+    baseUrl: 'https://globalpulse-news-production-31ee.up.railway.app',
+    authentication: 'JWT Bearer Token',
+    endpoints: {
+      health: {
+        'GET /health': 'Health check and system status'
+      },
+      auth: {
+        'POST /api/auth/login': 'User authentication',
+        'POST /api/auth/register': 'User registration',
+        'GET /api/auth/me': 'Get current user profile'
+      },
+      admin: {
+        'GET /api/admin/users': 'Get all users (Admin only)',
+        'POST /api/admin/users': 'Create user (Admin only)',
+        'PUT /api/admin/users/:id': 'Update user (Admin only)',
+        'DELETE /api/admin/users/:id': 'Delete user (Admin only)',
+        'GET /api/admin/stats': 'Get system statistics (Admin only)'
+      },
+      articles: {
+        'GET /api/articles': 'Get published articles',
+        'GET /api/articles/:id': 'Get article by ID',
+        'POST /api/articles': 'Create article (Authenticated)'
+      }
     }
   });
 });
 
-// Setup all API routes
-setupRoutes(app);
-
-// Route debugging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`🔍 Route accessed: ${req.method} ${req.path}`);
-  next();
-});
-
-// Error handling middleware
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('❌ Error:', err);
-  res.status(500).json({ 
-    success: false,
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+// ========================
+// ROOT ENDPOINT
+// ========================
+app.get('/', (req: Request, res: Response) => {
+  res.json({
+    status: 'OK',
+    message: 'GlobalPulse News API Server',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    documentation: '/api/docs',
+    health: '/health',
+    status: '/api/status'
   });
 });
 
-// 404 handler - ENHANCED
-app.use((req: Request, res: Response) => {
-  console.log('❌ 404 - Route not found:', req.method, req.url);
-  res.status(404).json({ 
+// ========================
+// API ROUTES
+// ========================
+console.log('🛣️ Initializing API routes...');
+setupRoutes(app);
+
+// ========================
+// ERROR HANDLING
+// ========================
+app.use(errorHandler);
+
+// ========================
+// 404 HANDLER
+// ========================
+app.use('*', (req: Request, res: Response) => {
+  res.status(404).json({
     success: false,
-    message: `Route ${req.method} ${req.url} not found`,
-    availableRoutes: [
+    message: `Endpoint ${req.method} ${req.originalUrl} not found`,
+    timestamp: new Date().toISOString(),
+    documentation: '/api/docs',
+    availableEndpoints: [
       'GET /health',
-      'GET /',
-      'POST /api/auth/login',
-      'POST /api/auth/register',
-      'GET /api/auth/me',
-      'GET /api/articles',
-      'POST /api/articles',
-      'GET /api/videos',
-      'POST /api/videos',
-      'GET /api/admin/users',
-      'POST /api/admin/users',
-      'GET /api/search'
+      'GET /api/status',
+      'GET /api/docs',
+      'GET /api/admin/users'
     ]
   });
 });
 
+// ========================
+// SERVER INITIALIZATION
+// ========================
 const httpServer = createServer(app);
 
-const startServer = async () => {
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
-  
-  console.log('🚀 Starting production server...');
-  console.log('🔧 Port:', port);
-  console.log('🔧 Environment:', process.env.NODE_ENV);
+class ServerManager {
+  private isShuttingDown = false;
 
-  // Connect to MongoDB
-  await connectDB();
+  async start(): Promise<void> {
+    const port = this.getPort();
+    
+    console.log('🔧 Server Configuration:');
+    console.log(`   Port: ${port}`);
+    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`   Node Version: ${process.version}`);
+    console.log(`   Platform: ${process.platform}/${process.arch}`);
 
-  httpServer.listen(port, "0.0.0.0", () => {
-    console.log('✅ PRODUCTION SERVER STARTED SUCCESSFULLY!');
-    console.log(`✅ Listening on port ${port}`);
-    console.log(`✅ Health check: http://0.0.0.0:${port}/health`);
-    console.log('✅ Available routes:');
-    console.log('   - GET  /health');
-    console.log('   - GET  /');
-    console.log('   - POST /api/auth/login');
-    console.log('   - POST /api/auth/register');
-    console.log('   - GET  /api/auth/me');
-    console.log('   - GET  /api/articles');
-    console.log('   - POST /api/articles');
-    console.log('   - GET  /api/videos');
-    console.log('   - POST /api/videos');
-    console.log('   - GET  /api/admin/users');
-    console.log('   - POST /api/admin/users');
-    console.log('   - GET  /api/search');
-  });
+    try {
+      await this.initializeDatabase();
+      await this.startHttpServer(port);
+      this.setupGracefulShutdown();
+    } catch (error) {
+      console.error('💥 Server startup failed:', error);
+      process.exit(1);
+    }
+  }
 
-  httpServer.on('error', (error: Error) => {
-    console.error('❌ SERVER FAILED TO START:', error);
-    process.exit(1);
-  });
-};
+  private getPort(): number {
+    return process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+  }
 
-startServer();
+  private async initializeDatabase(): Promise<void> {
+    console.log('🔗 Connecting to MongoDB...');
+    await connectDB();
+    console.log('✅ MongoDB connected successfully');
+  }
+
+  private async startHttpServer(port: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      httpServer.listen(port, "0.0.0.0", () => {
+        this.logStartupSuccess(port);
+        resolve();
+      });
+
+      httpServer.on('error', (error: Error) => {
+        console.error('❌ HTTP server error:', error);
+        reject(error);
+      });
+    });
+  }
+
+  private logStartupSuccess(port: number): void {
+    console.log('🎉 SERVER STARTED SUCCESSFULLY!');
+    console.log(`✅ Server running on port ${port}`);
+    console.log(`✅ Health: http://localhost:${port}/health`);
+    console.log(`✅ API Status: http://localhost:${port}/api/status`);
+    console.log(`✅ API Docs: http://localhost:${port}/api/docs`);
+    console.log(`✅ Admin API: http://localhost:${port}/api/admin/users`);
+    console.log('');
+    console.log('📊 System Status:');
+    console.log('   Database: Connected');
+    console.log('   Authentication: JWT Enabled');
+    console.log('   Rate Limiting: Active');
+    console.log('   CORS: Configured');
+    console.log('   Security: Helmet Enabled');
+    console.log('   Compression: Active');
+    console.log('   Logging: Comprehensive');
+  }
+
+  private setupGracefulShutdown(): void {
+    const signals = ['SIGINT', 'SIGTERM', 'SIGQUIT'];
+    
+    signals.forEach(signal => {
+      process.on(signal, async () => {
+        if (this.isShuttingDown) return;
+        this.isShuttingDown = true;
+        
+        console.log(`\n🛑 Received ${signal} - Starting graceful shutdown...`);
+        
+        await this.shutdown();
+      });
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('❌ Unhandled Promise Rejection at:', promise, 'reason:', reason);
+    });
+
+    process.on('uncaughtException', (error) => {
+      console.error('❌ Uncaught Exception:', error);
+      process.exit(1);
+    });
+  }
+
+  private async shutdown(): Promise<void> {
+    try {
+      console.log('🛑 Closing HTTP server...');
+      
+      await new Promise<void>((resolve, reject) => {
+        httpServer.close((error) => {
+          if (error) {
+            console.error('❌ Error closing HTTP server:', error);
+            reject(error);
+          } else {
+            console.log('✅ HTTP server closed');
+            resolve();
+          }
+        });
+      });
+
+      console.log('✅ Graceful shutdown completed');
+      process.exit(0);
+    } catch (error) {
+      console.error('💥 Error during shutdown:', error);
+      process.exit(1);
+    }
+  }
+}
+
+// Start the server
+const serverManager = new ServerManager();
+serverManager.start();
