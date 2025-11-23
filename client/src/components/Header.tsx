@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Globe, LogOut, LogIn, Home, Video, LayoutDashboard, User, ChevronUp, Search } from 'lucide-react';
+import { Globe, LogOut, LogIn, Home, Video, LayoutDashboard, User, ChevronUp, Search, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from './ThemeToggle';
 import LanguageSelector from './LanguageSelector';
@@ -13,6 +13,7 @@ const translations = {
     home: 'Home', 
     videos: 'Videos', 
     dashboard: 'Dashboard', 
+    admin: 'Admin Panel',
     title: 'GlobalPulse News', 
     logout: 'Logout', 
     login: 'Login',
@@ -27,6 +28,7 @@ const translations = {
     home: 'الرئيسية', 
     videos: 'فيديوهات', 
     dashboard: 'لوحة التحكم', 
+    admin: 'لوحة الإدارة',
     title: 'أخبار جلوبال بالس', 
     logout: 'تسجيل الخروج', 
     login: 'تسجيل الدخول',
@@ -41,6 +43,7 @@ const translations = {
     home: 'ہوم', 
     videos: 'ویڈیوز', 
     dashboard: 'ڈیش بورڈ', 
+    admin: 'ایڈمن پینل',
     title: 'گلوبل پلس نیوز', 
     logout: 'لاگ آؤٹ', 
     login: 'لاگ ان',
@@ -80,7 +83,7 @@ function BodyPadding() {
 
 export default function Header() {
   const { language, direction } = useLanguage();
-  const { isAuthenticated, logout, currentUser } = useAuth();
+  const { isAuthenticated, logout, currentUser } = useAuth(); // Remove hasRole
   const [location, setLocation] = useLocation();
   const t = translations[language as keyof typeof translations];
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -89,6 +92,9 @@ export default function Header() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // Check if user is admin - FIXED: Use currentUser.role instead of hasRole
+  const isAdmin = currentUser?.role === 'admin';
 
   useEffect(() => {
     const handleScroll = () => {
@@ -293,6 +299,17 @@ export default function Header() {
                 {t.dashboard}
               </Button>
             )}
+            {/* FIXED: Use isAdmin instead of hasRole */}
+            {isAdmin && (
+              <Button
+                variant={location === '/admin' ? 'default' : 'ghost'}
+                onClick={() => handleNavigation('/admin')}
+                className="rounded-lg font-medium"
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                {t.admin}
+              </Button>
+            )}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -416,6 +433,19 @@ export default function Header() {
                     </div>
                   )}
                 </div>
+                
+                {/* FIXED: Use isAdmin instead of hasRole */}
+                {isAdmin && (
+                  <Button
+                    variant={location === '/admin' ? 'default' : 'outline'}
+                    onClick={() => handleNavigation('/admin')}
+                    className="w-full justify-start"
+                    size="sm"
+                  >
+                    <Shield className="h-4 w-4 mr-2" />
+                    {t.admin}
+                  </Button>
+                )}
                 
                 <div className="flex items-center gap-3 justify-between">
                   <div className="flex-1">

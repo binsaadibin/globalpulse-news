@@ -6,7 +6,11 @@ interface User {
   username: string;
   role: string;
   email?: string;
-  name?: string;
+  firstName?: string;
+  lastName?: string;
+  permissions: string[];
+  isActive: boolean;
+  lastLogin?: string;
 }
 
 interface AuthContextType {
@@ -129,12 +133,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData);
-        setIsAuthenticated(true);
-        
-        // Store user data
-        localStorage.setItem('user_data', JSON.stringify(userData));
+        const data = await response.json();
+        if (data.success) {
+          setCurrentUser(data.user);
+          setIsAuthenticated(true);
+          
+          // Store user data
+          localStorage.setItem('user_data', JSON.stringify(data.user));
+        } else {
+          throw new Error('Failed to fetch user data');
+        }
       } else {
         throw new Error('Failed to fetch user data');
       }
@@ -180,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.success) {
         // Store token and set expiry (24 hours)
         TokenManager.setToken(data.token);
         const expiryTime = Date.now() + (24 * 60 * 60 * 1000); // 24 hours
