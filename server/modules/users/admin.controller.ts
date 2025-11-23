@@ -2,108 +2,38 @@ import { Response } from "express";
 import User from '../../models/User.js';
 import { AuthRequest } from '../../middleware/auth.js';
 
-// Get all users with advanced filtering and pagination
+// Get all users (for admin)
 export const getAllUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      page = 1,
-      limit = 10,
-      role,
-      isActive,
-      search,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
-
-    console.log('📋 Fetching users with filters:', {
-      page, limit, role, isActive, search, sortBy, sortOrder
-    });
-
-    // Build filter object
-    const filter: any = {};
+    console.log('📋 Fetching all users');
     
-    if (role && ['admin', 'editor', 'viewer'].includes(role as string)) {
-      filter.role = role;
-    }
-    
-    if (isActive !== undefined) {
-      filter.isActive = isActive === 'true';
-    }
-    
-    if (search) {
-      filter.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { username: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    // Build sort object
-    const sort: any = {};
-    sort[sortBy as string] = sortOrder === 'desc' ? -1 : 1;
-
-    // Execute query with pagination
-    const users = await User.find(filter)
-      .select('-password -loginAttempts -lockUntil')
-      .sort(sort)
-      .limit(Number(limit))
-      .skip((Number(page) - 1) * Number(limit))
-      .lean();
-
-    // Get total count for pagination
-    const totalUsers = await User.countDocuments(filter);
-    const totalPages = Math.ceil(totalUsers / Number(limit));
-
-    console.log(`✅ Found ${users.length} users out of ${totalUsers} total`);
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
 
     res.json({
       success: true,
       users,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        totalUsers,
-        totalPages,
-        hasNext: Number(page) < totalPages,
-        hasPrev: Number(page) > 1
-      },
-      filters: {
-        role: role || 'all',
-        isActive: isActive || 'all',
-        search: search || ''
-      }
+      count: users.length
     });
   } catch (error: any) {
-    console.error('❌ Get users error:', error);
+    console.error('Get users error:', error);
     res.status(500).json({ 
       success: false,
-      message: 'Failed to fetch users',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to fetch users' 
     });
   }
 };
 
-// Create new user with validation
+// Create new user (admin only)
 export const createUser = async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      username,
-      email,
-      password,
-      role = 'editor',
-      permissions = ['create:articles', 'edit:articles'],
-      firstName,
-      lastName
-    } = req.body;
-
-    console.log('👤 Creating new user:', { username, email, role });
+    const { username, email, password, role, permissions, firstName, lastName } = req.body;
+    console.log('👤 Creating user:', username);
 
     // Validation
     if (!username || !email || !password || !firstName || !lastName) {
       return res.status(400).json({
         success: false,
-        message: 'All fields are required: firstName, lastName, username, email, password'
+        message: 'All fields are required'
       });
     }
 
@@ -114,46 +44,37 @@ export const createUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!['admin', 'editor', 'viewer'].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Role must be admin, editor, or viewer'
-      });
-    }
-
-    // Check for existing user
+    // Check if user exists
     const existingUser = await User.findOne({
-      $or: [{ email: email.toLowerCase() }, { username: username.toLowerCase() }]
+      $or: [{ email }, { username }]
     });
 
     if (existingUser) {
-      const field = existingUser.email === email.toLowerCase() ? 'email' : 'username';
       return res.status(409).json({
         success: false,
-        message: `User with this ${field} already exists`
+        message: 'User with this email or username already exists'
       });
     }
 
     // Create user
     const user = new User({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      username: username.toLowerCase().trim(),
-      email: email.toLowerCase().trim(),
+      firstName,
+      lastName,
+      username: username.toLowerCase(),
+      email: email.toLowerCase(),
       password,
-      role,
-      permissions,
+      role: role || 'editor',
+      permissions: permissions || ['create:articles', 'edit:articles'],
       isActive: true,
       isApproved: true
     });
 
     await user.save();
 
-    // Get user without password
-    const userResponse = await User.findById(user._id)
-      .select('-password -loginAttempts -lockUntil');
+    // Return user without password
+    const userResponse = await User.findById(user._id).select('-password');
 
-    console.log('✅ User created successfully:', userResponse.username);
+    console.log('✅ User created successfully');
 
     res.status(201).json({
       success: true,
@@ -161,45 +82,29 @@ export const createUser = async (req: AuthRequest, res: Response) => {
       user: userResponse
     });
   } catch (error: any) {
-    console.error('❌ Create user error:', error);
+    console.error('Create user error:', error);
     
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map((e: any) => e.message);
-      return res.status(400).json({
+    if (error.code === 11000) {
+      return res.status(409).json({
         success: false,
-        message: 'Validation failed',
-        errors
+        message: 'User with this email or username already exists'
       });
     }
 
     res.status(500).json({
       success: false,
-      message: 'Failed to create user',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to create user'
     });
   }
 };
 
-// Update user with comprehensive validation
+// Update user
 export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const {
-      username,
-      email,
-      role,
-      permissions,
-      firstName,
-      lastName,
-      isActive,
-      profile
-    } = req.body;
+    const { username, email, role, permissions, firstName, lastName, isActive } = req.body;
+    console.log('✏️ Updating user:', id);
 
-    console.log('✏️ Updating user:', id, { 
-      username, email, role, isActive 
-    });
-
-    // Find user
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({
@@ -208,68 +113,38 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Prevent self-modification of critical fields
-    if (user._id.toString() === req.user?._id.toString()) {
-      if (isActive !== undefined && !isActive) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot deactivate your own account'
-        });
-      }
-      
-      if (role && role !== user.role) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot change your own role'
-        });
-      }
-    }
-
     // Check for duplicate username/email
     if (username || email) {
       const existingUser = await User.findOne({
         $and: [
           { _id: { $ne: id } },
-          { 
-            $or: [
-              { email: email?.toLowerCase() },
-              { username: username?.toLowerCase() }
-            ].filter(Boolean)
-          }
+          { $or: [{ email: email?.toLowerCase() }, { username: username?.toLowerCase() }] }
         ]
       });
 
       if (existingUser) {
-        const field = existingUser.email === email?.toLowerCase() ? 'email' : 'username';
         return res.status(409).json({
           success: false,
-          message: `User with this ${field} already exists`
+          message: 'User with this email or username already exists'
         });
       }
     }
 
     // Update fields
-    const updateData: any = {};
-    if (username) updateData.username = username.toLowerCase().trim();
-    if (email) updateData.email = email.toLowerCase().trim();
-    if (firstName) updateData.firstName = firstName.trim();
-    if (lastName) updateData.lastName = lastName.trim();
-    if (role) updateData.role = role;
-    if (permissions) updateData.permissions = permissions;
-    if (typeof isActive === 'boolean') updateData.isActive = isActive;
-    if (profile) updateData.profile = { ...user.profile, ...profile };
+    if (username) user.username = username.toLowerCase();
+    if (email) user.email = email.toLowerCase();
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (role) user.role = role;
+    if (permissions) user.permissions = permissions;
+    if (typeof isActive === 'boolean') user.isActive = isActive;
 
-    // Perform update
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
-      { $set: updateData },
-      { 
-        new: true,
-        runValidators: true 
-      }
-    ).select('-password -loginAttempts -lockUntil');
+    await user.save();
 
-    console.log('✅ User updated successfully:', updatedUser.username);
+    // Return updated user without password
+    const updatedUser = await User.findById(id).select('-password');
+
+    console.log('✅ User updated successfully');
 
     res.json({
       success: true,
@@ -277,26 +152,15 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       user: updatedUser
     });
   } catch (error: any) {
-    console.error('❌ Update user error:', error);
-    
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map((e: any) => e.message);
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors
-      });
-    }
-
+    console.error('Update user error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update user',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to update user'
     });
   }
 };
 
-// Toggle user activation with safety checks
+// Toggle user activation
 export const toggleUserActivation = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -318,37 +182,26 @@ export const toggleUserActivation = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Toggle activation
     user.isActive = !user.isActive;
     await user.save();
 
-    console.log('✅ User activation toggled:', {
-      username: user.username,
-      newStatus: user.isActive
-    });
+    console.log('✅ User activation toggled:', user.isActive);
 
     res.json({
       success: true,
       message: `User ${user.isActive ? 'activated' : 'deactivated'} successfully`,
-      isActive: user.isActive,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role
-      }
+      isActive: user.isActive
     });
   } catch (error: any) {
-    console.error('❌ Toggle activation error:', error);
+    console.error('Toggle activation error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update user status',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: 'Failed to update user'
     });
   }
 };
 
-// Delete user with comprehensive checks
+// Delete user
 export const deleteUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -370,103 +223,19 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Prevent deletion of last admin
-    if (user.role === 'admin') {
-      const adminCount = await User.countDocuments({ role: 'admin', isActive: true });
-      if (adminCount <= 1) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cannot delete the last active admin user'
-        });
-      }
-    }
-
-    // Perform deletion
     await User.findByIdAndDelete(id);
 
-    console.log('✅ User deleted successfully:', user.username);
+    console.log('✅ User deleted successfully');
 
     res.json({
       success: true,
-      message: 'User deleted successfully',
-      deletedUser: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role
-      }
+      message: 'User deleted successfully'
     });
   } catch (error: any) {
-    console.error('❌ Delete user error:', error);
+    console.error('Delete user error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete user',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-};
-
-// Get user statistics
-export const getUserStats = async (req: AuthRequest, res: Response) => {
-  try {
-    console.log('📊 Getting user statistics');
-
-    const stats = await User.aggregate([
-      {
-        $facet: {
-          totalUsers: [{ $count: 'count' }],
-          activeUsers: [{ $match: { isActive: true } }, { $count: 'count' }],
-          usersByRole: [
-            { $group: { _id: '$role', count: { $sum: 1 } } }
-          ],
-          recentRegistrations: [
-            { $sort: { createdAt: -1 } },
-            { $limit: 5 },
-            { 
-              $project: {
-                username: 1,
-                email: 1,
-                role: 1,
-                createdAt: 1
-              }
-            }
-          ],
-          loginActivity: [
-            { $match: { lastLogin: { $exists: true } } },
-            { $sort: { lastLogin: -1 } },
-            { $limit: 10 },
-            {
-              $project: {
-                username: 1,
-                lastLogin: 1,
-                loginCount: 1
-              }
-            }
-          ]
-        }
-      }
-    ]);
-
-    const result = {
-      totalUsers: stats[0]?.totalUsers[0]?.count || 0,
-      activeUsers: stats[0]?.activeUsers[0]?.count || 0,
-      usersByRole: stats[0]?.usersByRole || [],
-      recentRegistrations: stats[0]?.recentRegistrations || [],
-      loginActivity: stats[0]?.loginActivity || []
-    };
-
-    console.log('✅ User statistics retrieved:', result);
-
-    res.json({
-      success: true,
-      stats: result,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error('❌ Get user stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to get user statistics'
+      message: 'Failed to delete user'
     });
   }
 };

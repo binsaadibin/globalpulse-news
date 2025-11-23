@@ -12,13 +12,13 @@ interface User {
   _id: string;
   username: string;
   email: string;
-  firstName: string;
-  lastName: string;
   role: string;
   permissions: string[];
   isActive: boolean;
   createdAt: string;
   lastLogin: string | null;
+  firstName?: string;
+  lastName?: string;
 }
 
 const API_BASE_URL = 'https://globalpulse-news-production-31ee.up.railway.app';
@@ -39,44 +39,33 @@ export default function UserManagement() {
     try {
       setLoading(true);
       console.log('📋 Fetching users from API...');
-
+      
       const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
         headers: getAuthHeaders()
       });
 
+      console.log('🔍 Response status:', response.status);
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('📊 Users API response:', data);
 
       if (data.success) {
-        console.log('✅ Successfully loaded users:', data.users.length);
-        setUsers(data.users);
+        setUsers(data.users || []);
+        console.log(`✅ Loaded ${data.users?.length || 0} users`);
       } else {
         throw new Error(data.message || 'Failed to fetch users');
       }
     } catch (error: any) {
       console.error('❌ Fetch users error:', error);
-      
-      let errorMessage = 'Failed to load users';
-      
-      if (error.message.includes('Failed to fetch')) {
-        errorMessage = 'Network error: Unable to connect to server';
-      } else if (error.message.includes('401') || error.message.includes('403')) {
-        errorMessage = 'Access denied: You do not have permission to view users';
-      } else if (error.message.includes('404')) {
-        errorMessage = 'Admin API endpoint not found. Please ensure the server is running.';
-      } else {
-        errorMessage = error.message || 'Failed to load users';
-      }
-
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: error.message || 'Failed to load users. Please check if you have admin permissions.',
         variant: 'destructive'
       });
-
       setUsers([]);
     } finally {
       setLoading(false);
@@ -91,8 +80,6 @@ export default function UserManagement() {
 
   const handleToggleActivation = async (userId: string, currentStatus: boolean) => {
     try {
-      console.log('🔧 Toggling user activation:', userId);
-      
       const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/toggle-activation`, {
         method: 'PATCH',
         headers: getAuthHeaders()
@@ -117,10 +104,10 @@ export default function UserManagement() {
         throw new Error(data.message || 'Failed to update user');
       }
     } catch (error: any) {
-      console.error('❌ Toggle activation error:', error);
+      console.error('Toggle activation error:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update user status',
+        description: error.message || 'Failed to update user',
         variant: 'destructive'
       });
     }
@@ -132,8 +119,6 @@ export default function UserManagement() {
     }
 
     try {
-      console.log('🗑️ Deleting user:', userId);
-      
       const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
@@ -156,18 +141,13 @@ export default function UserManagement() {
         throw new Error(data.message || 'Failed to delete user');
       }
     } catch (error: any) {
-      console.error('❌ Delete user error:', error);
+      console.error('Delete user error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Failed to delete user',
         variant: 'destructive'
       });
     }
-  };
-
-  const handleCreateUserSuccess = () => {
-    setShowCreateForm(false);
-    fetchUsers();
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -187,7 +167,7 @@ export default function UserManagement() {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto mb-4"></div>
           <div className="text-gray-600">Loading users...</div>
         </div>
       </div>
@@ -199,7 +179,10 @@ export default function UserManagement() {
       {/* Create User Form */}
       {showCreateForm && (
         <CreateUserForm 
-          onSuccess={handleCreateUserSuccess}
+          onSuccess={() => {
+            setShowCreateForm(false);
+            fetchUsers();
+          }}
           onCancel={() => setShowCreateForm(false)}
         />
       )}
@@ -256,14 +239,14 @@ export default function UserManagement() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <CardTitle className="text-lg truncate">
-                      {user.firstName} {user.lastName}
+                      {user.firstName && user.lastName 
+                        ? `${user.firstName} ${user.lastName}`
+                        : user.username
+                      }
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 truncate">
                       <Mail className="h-3 w-3 flex-shrink-0" />
                       <span className="truncate">{user.email}</span>
-                    </CardDescription>
-                    <CardDescription className="truncate">
-                      @{user.username}
                     </CardDescription>
                   </div>
                 </div>
@@ -316,7 +299,7 @@ export default function UserManagement() {
               </div>
 
               {/* Permissions */}
-              {user.permissions && user.permissions.length > 0 && !user.permissions.includes('all') && (
+              {user.permissions && user.permissions.length > 0 && user.permissions[0] !== 'all' && (
                 <div className="text-sm">
                   <div className="text-gray-600 dark:text-gray-400 mb-1">Permissions:</div>
                   <div className="flex flex-wrap gap-1">
@@ -349,12 +332,6 @@ export default function UserManagement() {
                   size="sm"
                   className="flex-1 flex items-center gap-1"
                   disabled={user._id === currentUser?.id}
-                  onClick={() => {
-                    toast({
-                      title: 'Info',
-                      description: 'Edit functionality coming soon'
-                    });
-                  }}
                 >
                   <Edit className="h-3 w-3" />
                   Edit
@@ -362,7 +339,7 @@ export default function UserManagement() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="flex-1 flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  className="flex-1 flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={() => handleDeleteUser(user._id, user.username)}
                   disabled={user._id === currentUser?.id}
                 >
@@ -387,9 +364,7 @@ export default function UserManagement() {
         <Card>
           <CardContent className="p-8 text-center">
             <User className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No users found
-            </h3>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No users found</h3>
             <p className="text-gray-500 dark:text-gray-400 mb-4">
               Get started by adding your first user to the platform
             </p>

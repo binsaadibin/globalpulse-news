@@ -1,14 +1,13 @@
 import { Response } from "express";
-import jwt from 'jsonwebtoken';
 import User from '../../models/User.js';
 import { AuthRequest } from '../../middleware/auth.js';
+import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key_here_change_in_production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 // Generate JWT token
 const generateToken = (userId: string): string => {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
 };
 
 // Initialize default admin users
@@ -63,15 +62,7 @@ export const initializeDefaultUsers = async () => {
         await user.save();
         console.log(`✅ Created default user: ${userData.username}`);
       } else {
-        // Update existing user to ensure correct permissions
-        await User.findOneAndUpdate(
-          { username: userData.username },
-          { 
-            ...userData,
-            password: existingUser.password // Keep existing password
-          }
-        );
-        console.log(`✅ Updated default user: ${userData.username}`);
+        console.log(`⚠️ User already exists: ${userData.username}`);
       }
     }
 
@@ -113,15 +104,6 @@ export const login = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ 
         success: false,
         message: 'Account is deactivated. Please contact administrator.' 
-      });
-    }
-
-    // Check if user is approved
-    if (!user.isApproved && user.role !== 'admin') {
-      console.log('❌ User account not approved:', username);
-      return res.status(401).json({ 
-        success: false,
-        message: 'Account pending approval. Please contact administrator.' 
       });
     }
 
@@ -203,7 +185,7 @@ export const register = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Create new user (initially inactive until admin approval)
+    // Create new user
     const user = new User({
       firstName,
       lastName,
@@ -211,8 +193,8 @@ export const register = async (req: AuthRequest, res: Response) => {
       email: email.toLowerCase(),
       password,
       role: 'viewer',
-      isActive: true, // Auto-activate for now, can change to false for admin approval
-      isApproved: true, // Auto-approve for now
+      isActive: true,
+      isApproved: true,
       permissions: ['read:articles', 'read:videos']
     });
 
@@ -253,7 +235,7 @@ export const register = async (req: AuthRequest, res: Response) => {
 // Get current user
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findById(req.user?._id).select('-password');
+    const user = await User.findById(req.user?._id);
     
     if (!user) {
       return res.status(404).json({

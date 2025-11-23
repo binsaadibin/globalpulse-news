@@ -80,13 +80,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Function to get auth headers for API requests
   const getAuthHeaders = (): Record<string, string> => {
     const token = TokenManager.getToken();
-    if (!token) {
-      return { 'Content-Type': 'application/json' };
-    }
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
     };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
   };
 
   // Enhanced token validation
@@ -127,9 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Get user data
       const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: getAuthHeaders(),
       });
 
       if (response.ok) {
@@ -137,8 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.success) {
           setCurrentUser(data.user);
           setIsAuthenticated(true);
-          
-          // Store user data
           localStorage.setItem('user_data', JSON.stringify(data.user));
         } else {
           throw new Error('Failed to fetch user data');
@@ -171,10 +169,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, message: 'Please enter both username and password' };
       }
 
-      if (password.length < 6) {
-        return { success: false, message: 'Password must be at least 6 characters long' };
-      }
-
       const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
@@ -196,11 +190,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         setCurrentUser(data.user);
         setIsAuthenticated(true);
-        
-        // Store user data
         localStorage.setItem('user_data', JSON.stringify(data.user));
         
-        return { success: true, message: 'Login successful!' };
+        return { success: true, message: data.message || 'Login successful!' };
       } else {
         const errorMessage = data.message || 'Login failed. Please check your credentials.';
         setError(errorMessage);
