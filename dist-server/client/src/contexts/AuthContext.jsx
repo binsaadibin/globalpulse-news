@@ -123,7 +123,7 @@ export function AuthProvider(_a) {
     }); };
     // Check auth status on mount with enhanced security
     var checkAuthStatus = function () { return __awaiter(_this, void 0, void 0, function () {
-        var token, isValid, response, userData, error_2;
+        var token, isValid, response, data, error_2;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -155,11 +155,16 @@ export function AuthProvider(_a) {
                     if (!response.ok) return [3 /*break*/, 4];
                     return [4 /*yield*/, response.json()];
                 case 3:
-                    userData = _a.sent();
-                    setCurrentUser(userData);
-                    setIsAuthenticated(true);
-                    // Store user data
-                    localStorage.setItem('user_data', JSON.stringify(userData));
+                    data = _a.sent();
+                    if (data.success) {
+                        setCurrentUser(data.user);
+                        setIsAuthenticated(true);
+                        // Store user data
+                        localStorage.setItem('user_data', JSON.stringify(data.user));
+                    }
+                    else {
+                        throw new Error('Failed to fetch user data');
+                    }
                     return [3 /*break*/, 5];
                 case 4: throw new Error('Failed to fetch user data');
                 case 5: return [3 /*break*/, 8];
@@ -211,7 +216,7 @@ export function AuthProvider(_a) {
                     return [4 /*yield*/, response.json()];
                 case 2:
                     data = _a.sent();
-                    if (response.ok) {
+                    if (response.ok && data.success) {
                         // Store token and set expiry (24 hours)
                         TokenManager.setToken(data.token);
                         expiryTime = Date.now() + (24 * 60 * 60 * 1000);

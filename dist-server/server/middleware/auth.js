@@ -35,33 +35,129 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
-export var auth = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var token, decoded, user, error_1;
-    var _a;
-    return __generator(this, function (_b) {
-        switch (_b.label) {
+import User from '../models/User.js';
+var JWT_SECRET = process.env.JWT_SECRET || 'your_secure_jwt_secret_key_change_in_production_2024';
+export var authenticateToken = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var authHeader, token, decoded, user, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
             case 0:
-                _b.trys.push([0, 2, , 3]);
-                token = (_a = req.header('Authorization')) === null || _a === void 0 ? void 0 : _a.replace('Bearer ', '');
+                _a.trys.push([0, 2, , 3]);
+                authHeader = req.headers['authorization'];
+                token = authHeader && authHeader.split(' ')[1];
                 if (!token) {
-                    return [2 /*return*/, res.status(401).json({ message: 'No token, authorization denied' })];
+                    return [2 /*return*/, res.status(401).json({
+                            success: false,
+                            message: 'Access token required',
+                            code: 'MISSING_TOKEN'
+                        })];
                 }
-                decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-                return [4 /*yield*/, User.findById(decoded.userId).select('-password')];
+                decoded = jwt.verify(token, JWT_SECRET);
+                if (!decoded.userId) {
+                    return [2 /*return*/, res.status(403).json({
+                            success: false,
+                            message: 'Invalid token payload',
+                            code: 'INVALID_TOKEN'
+                        })];
+                }
+                return [4 /*yield*/, User.findById(decoded.userId).select('-password -loginAttempts -lockUntil')];
             case 1:
-                user = _b.sent();
+                user = _a.sent();
                 if (!user) {
-                    return [2 /*return*/, res.status(401).json({ message: 'Token is not valid' })];
+                    return [2 /*return*/, res.status(403).json({
+                            success: false,
+                            message: 'User account not found',
+                            code: 'USER_NOT_FOUND'
+                        })];
+                }
+                if (!user.isActive) {
+                    return [2 /*return*/, res.status(403).json({
+                            success: false,
+                            message: 'Account is deactivated. Please contact administrator.',
+                            code: 'ACCOUNT_DEACTIVATED'
+                        })];
+                }
+                if (!user.isApproved && user.role !== 'admin') {
+                    return [2 /*return*/, res.status(403).json({
+                            success: false,
+                            message: 'Account pending approval. Please contact administrator.',
+                            code: 'ACCOUNT_PENDING_APPROVAL'
+                        })];
                 }
                 req.user = user;
                 next();
                 return [3 /*break*/, 3];
             case 2:
-                error_1 = _b.sent();
-                res.status(401).json({ message: 'Token is not valid' });
-                return [3 /*break*/, 3];
+                error_1 = _a.sent();
+                console.error('Auth middleware error:', error_1);
+                if (error_1.name === 'TokenExpiredError') {
+                    return [2 /*return*/, res.status(401).json({
+                            success: false,
+                            message: 'Token has expired',
+                            code: 'TOKEN_EXPIRED'
+                        })];
+                }
+                if (error_1.name === 'JsonWebTokenError') {
+                    return [2 /*return*/, res.status(403).json({
+                            success: false,
+                            message: 'Invalid token',
+                            code: 'INVALID_TOKEN'
+                        })];
+                }
+                return [2 /*return*/, res.status(500).json({
+                        success: false,
+                        message: 'Authentication failed',
+                        code: 'AUTH_FAILED'
+                    })];
             case 3: return [2 /*return*/];
+        }
+    });
+}); };
+export var requireRole = function (roles) {
+    return function (req, res, next) {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required',
+                code: 'AUTH_REQUIRED'
+            });
+        }
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: "Insufficient permissions. Required roles: ".concat(roles.join(', ')),
+                code: 'INSUFFICIENT_PERMISSIONS'
+            });
+        }
+        next();
+    };
+};
+export var optionalAuth = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var authHeader, token, decoded, user, error_2;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                _a.trys.push([0, 3, , 4]);
+                authHeader = req.headers['authorization'];
+                token = authHeader && authHeader.split(' ')[1];
+                if (!token) return [3 /*break*/, 2];
+                decoded = jwt.verify(token, JWT_SECRET);
+                return [4 /*yield*/, User.findById(decoded.userId).select('-password -loginAttempts -lockUntil')];
+            case 1:
+                user = _a.sent();
+                if (user && user.isActive && (user.isApproved || user.role === 'admin')) {
+                    req.user = user;
+                }
+                _a.label = 2;
+            case 2:
+                next();
+                return [3 /*break*/, 4];
+            case 3:
+                error_2 = _a.sent();
+                // Continue without authentication for optional routes
+                next();
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

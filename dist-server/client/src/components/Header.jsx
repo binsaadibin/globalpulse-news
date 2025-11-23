@@ -35,7 +35,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 import { Link, useLocation } from 'wouter';
-import { Globe, LogOut, LogIn, Home, Video, LayoutDashboard, User, ChevronUp, Search } from 'lucide-react';
+import { Globe, LogOut, LogIn, Home, Video, LayoutDashboard, User, ChevronUp, Search, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThemeToggle from './ThemeToggle';
 import LanguageSelector from './LanguageSelector';
@@ -48,6 +48,7 @@ var translations = {
         home: 'Home',
         videos: 'Videos',
         dashboard: 'Dashboard',
+        admin: 'Admin Panel',
         title: 'GlobalPulse News',
         logout: 'Logout',
         login: 'Login',
@@ -62,6 +63,7 @@ var translations = {
         home: 'الرئيسية',
         videos: 'فيديوهات',
         dashboard: 'لوحة التحكم',
+        admin: 'لوحة الإدارة',
         title: 'أخبار جلوبال بالس',
         logout: 'تسجيل الخروج',
         login: 'تسجيل الدخول',
@@ -76,6 +78,7 @@ var translations = {
         home: 'ہوم',
         videos: 'ویڈیوز',
         dashboard: 'ڈیش بورڈ',
+        admin: 'ایڈمن پینل',
         title: 'گلوبل پلس نیوز',
         logout: 'لاگ آؤٹ',
         login: 'لاگ ان',
@@ -111,7 +114,7 @@ function BodyPadding() {
 export default function Header() {
     var _this = this;
     var _a = useLanguage(), language = _a.language, direction = _a.direction;
-    var _b = useAuth(), isAuthenticated = _b.isAuthenticated, logout = _b.logout, currentUser = _b.currentUser;
+    var _b = useAuth(), isAuthenticated = _b.isAuthenticated, logout = _b.logout, currentUser = _b.currentUser; // Remove hasRole
     var _c = useLocation(), location = _c[0], setLocation = _c[1];
     var t = translations[language];
     var _d = useState(false), mobileMenuOpen = _d[0], setMobileMenuOpen = _d[1];
@@ -120,6 +123,8 @@ export default function Header() {
     var _g = useState(false), isSearching = _g[0], setIsSearching = _g[1];
     var _h = useState([]), searchResults = _h[0], setSearchResults = _h[1];
     var _j = useState(false), showSearchResults = _j[0], setShowSearchResults = _j[1];
+    // Check if user is admin - FIXED: Use currentUser.role instead of hasRole
+    var isAdmin = (currentUser === null || currentUser === void 0 ? void 0 : currentUser.role) === 'admin';
     useEffect(function () {
         var handleScroll = function () {
             setIsScrolled(window.scrollY > 10);
@@ -269,6 +274,11 @@ export default function Header() {
             {isAuthenticated && (<Button variant={location === '/dashboard' ? 'default' : 'ghost'} onClick={function () { return handleNavigation('/dashboard'); }} className="rounded-lg font-medium">
                 {t.dashboard}
               </Button>)}
+            {/* FIXED: Use isAdmin instead of hasRole */}
+            {isAdmin && (<Button variant={location === '/admin' ? 'default' : 'ghost'} onClick={function () { return handleNavigation('/admin'); }} className="rounded-lg font-medium">
+                <Shield className="h-4 w-4 mr-2"/>
+                {t.admin}
+              </Button>)}
           </nav>
 
           <div className="flex items-center gap-3">
@@ -338,6 +348,12 @@ export default function Header() {
                         </div>)}
                     </div>)}
                 </div>
+                
+                {/* FIXED: Use isAdmin instead of hasRole */}
+                {isAdmin && (<Button variant={location === '/admin' ? 'default' : 'outline'} onClick={function () { return handleNavigation('/admin'); }} className="w-full justify-start" size="sm">
+                    <Shield className="h-4 w-4 mr-2"/>
+                    {t.admin}
+                  </Button>)}
                 
                 <div className="flex items-center gap-3 justify-between">
                   <div className="flex-1">

@@ -1,671 +1,380 @@
-// import express, { type Request, Response, NextFunction } from "express";
-// import { createServer, type Server } from "http";
-// import mongoose from 'mongoose';
-// import jwt from 'jsonwebtoken';
-// import cors from 'cors';
-// import path from 'path';
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
 };
-var __spreadArray = (this && this.__spreadArray) || function (to, from, pack) {
-    if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-        if (ar || !(i in from)) {
-            if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-            ar[i] = from[i];
-        }
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g = Object.create((typeof Iterator === "function" ? Iterator : Object).prototype);
+    return g.next = verb(0), g["throw"] = verb(1), g["return"] = verb(2), typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (g && (g = 0, op[0] && (_ = 0)), _) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
-    return to.concat(ar || Array.prototype.slice.call(from));
 };
 import express from "express";
 import { createServer } from "http";
-import jwt from 'jsonwebtoken';
 import cors from 'cors';
-import { fileURLToPath } from 'url'; // ADD THIS
-import { dirname } from 'path'; // ADD THIS
-// ADD THESE 2 LINES
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = dirname(__filename);
-console.log('🚀 Server starting initialization...');
+import helmet from 'helmet';
+import compression from 'compression';
+import { connectDB, healthCheckDB } from './db/connection.js';
+import { setupRoutes } from './routes/index.js';
+import { apiRateLimit } from './middleware/rateLimit.js';
+console.log('🚀 GlobalPulse News API Server Starting...');
 var app = express();
-// Add request logging middleware first
+// Security middleware
+app.use(helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:"],
+        },
+    },
+}));
+// Compression middleware
+app.use(compression());
+// Request logging middleware
 app.use(function (req, res, next) {
-    console.log("\uD83D\uDCE5 ".concat(req.method, " ").concat(req.url));
+    var timestamp = new Date().toISOString();
+    var ip = req.ip || req.connection.remoteAddress;
+    console.log("\uD83D\uDCE5 [".concat(timestamp, "] ").concat(req.method, " ").concat(req.url, " - IP: ").concat(ip, " - User-Agent: ").concat(req.get('User-Agent')));
     next();
 });
-// Basic middleware first
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false }));
+// Body parsing middleware
+app.use(express.json({
+    limit: '10mb',
+    verify: function (req, res, buf) {
+        req.rawBody = buf;
+    }
+}));
+app.use(express.urlencoded({
+    extended: true,
+    limit: '10mb'
+}));
 // CORS configuration
 app.use(cors({
-    origin: true, // Allow all origins for now to debug
-    credentials: true,
-}));
-// Handle preflight requests
-app.options('*', cors());
-// Simple health check endpoint
-app.get('/health', function (req, res) {
-    console.log('🏥 Health check called');
-    res.status(200).json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        service: 'GlobalPulse News API',
-        version: '1.0.0'
-    });
-});
-// Root route
-app.get('/', function (req, res) {
-    console.log('🏠 Root route called');
-    res.json({
-        status: 'OK',
-        message: 'GlobalPulse News API is running',
-        timestamp: new Date().toISOString(),
-        endpoints: {
-            health: '/health',
-            articles: '/api/articles',
-            videos: '/api/videos',
-            auth: '/api/auth'
-        }
-    });
-});
-// Test route
-app.get('/test', function (req, res) {
-    console.log('🧪 Test route called');
-    res.json({ message: 'Test successful', timestamp: new Date().toISOString() });
-});
-// MOCK DATA STORAGE
-var articlesStorage = [];
-var videosStorage = [];
-// MOCK USERS
-var MOCK_USERS = [
-    { id: '1', username: 'globalplus', password: 'globalplus@4455', role: 'admin' },
-    { id: '2', username: 'globalnews', password: 'globalnews@4455', role: 'admin' },
-    { id: '3', username: 'haroonosmani', password: 'haroon@1324', role: 'editor' },
-];
-// SIMPLIFIED AUTH MIDDLEWARE
-var authenticateToken = function (req, res, next) {
-    var authHeader = req.headers['authorization'];
-    var token = authHeader && authHeader.split(' ')[1];
-    if (!token) {
-        return res.status(401).json({ message: 'Access token required' });
-    }
-    try {
-        var decoded_1 = jwt.verify(token, 'fallback_secret');
-        var user = MOCK_USERS.find(function (u) { return u.id === decoded_1.userId; });
-        if (!user) {
-            return res.status(403).json({ message: 'User not found' });
-        }
-        req.user = user;
-        next();
-    }
-    catch (error) {
-        return res.status(403).json({ message: 'Invalid token' });
-    }
-};
-// AUTH ROUTES
-app.post('/api/auth/login', function (req, res) {
-    try {
-        var _a = req.body, username_1 = _a.username, password_1 = _a.password;
-        console.log('🔐 Login attempt:', username_1);
-        var user = MOCK_USERS.find(function (u) { return u.username === username_1 && u.password === password_1; });
-        if (!user) {
-            console.log('❌ Invalid credentials for:', username_1);
-            return res.status(401).json({ message: 'Invalid credentials' });
-        }
-        var token = jwt.sign({ userId: user.id }, 'fallback_secret', { expiresIn: '24h' });
-        console.log('✅ Login successful for:', username_1);
-        res.json({
-            token: token,
-            user: { id: user.id, username: user.username, role: user.role },
-        });
-    }
-    catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-app.get('/api/auth/me', authenticateToken, function (req, res) {
-    try {
-        res.json({
-            id: req.user.id,
-            username: req.user.username,
-            role: req.user.role
-        });
-    }
-    catch (error) {
-        res.status(401).json({ message: 'Invalid token' });
-    }
-});
-// ARTICLES API ROUTES
-// Get all published articles (for home page) - PUBLIC
-app.get('/api/articles', function (req, res) {
-    try {
-        console.log('📰 Fetching published articles for home page');
-        var publishedArticles = articlesStorage
-            .filter(function (article) { return article.status === 'published'; })
-            .map(function (article) { return (__assign(__assign({}, article), { views: article.views || 0, likes: article.likes || 0, comments: article.comments || [], readTime: article.readTime || '5 min read' })); });
-        console.log('📊 Returning', publishedArticles.length, 'published articles');
-        res.json(publishedArticles);
-    }
-    catch (error) {
-        console.error('Get articles error:', error);
-        res.json([]);
-    }
-});
-// Create article - PROTECTED
-app.post('/api/articles', authenticateToken, function (req, res) {
-    try {
-        console.log('📝 Creating article by:', req.user.username);
-        var article = __assign(__assign({ _id: Date.now().toString() }, req.body), { views: 0, likes: 0, comments: [], readTime: req.body.readTime || '5 min read', createdBy: req.user.id, createdByUsername: req.user.username, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-        articlesStorage.push(article);
-        console.log('💾 Article saved. Total articles:', articlesStorage.length);
-        res.json({
-            success: true,
-            message: "Article ".concat(article.status === 'draft' ? 'saved as draft' : 'published', " successfully"),
-            article: article
-        });
-    }
-    catch (error) {
-        console.error('Create article error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Get user's articles for dashboard - PROTECTED
-app.get('/api/articles/my-articles', authenticateToken, function (req, res) {
-    try {
-        console.log('📚 Fetching articles for user:', req.user.username);
-        var userArticles = articlesStorage
-            .filter(function (article) { return article.createdBy === req.user.id; })
-            .map(function (article) { return (__assign(__assign({}, article), { views: article.views || 0, likes: article.likes || 0, comments: article.comments || [] })); });
-        console.log('📊 Returning', userArticles.length, 'articles for user');
-        res.json(userArticles);
-    }
-    catch (error) {
-        console.error('Get my articles error:', error);
-        res.json([]);
-    }
-});
-// Update article - PROTECTED
-app.put('/api/articles/:id', authenticateToken, function (req, res) {
-    try {
-        var articleId_1 = req.params.id;
-        console.log('✏️ Updating article:', articleId_1);
-        var articleIndex = articlesStorage.findIndex(function (article) {
-            return article._id === articleId_1 && article.createdBy === req.user.id;
-        });
-        if (articleIndex === -1) {
-            return res.status(404).json({ message: 'Article not found' });
-        }
-        var updatedArticle = __assign(__assign(__assign({}, articlesStorage[articleIndex]), req.body), { updatedAt: new Date().toISOString() });
-        articlesStorage[articleIndex] = updatedArticle;
-        console.log('✅ Article updated successfully');
-        res.json({
-            success: true,
-            message: "Article ".concat(updatedArticle.status === 'draft' ? 'draft updated' : 'updated and published', " successfully"),
-            article: updatedArticle
-        });
-    }
-    catch (error) {
-        console.error('Update article error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Delete article - PROTECTED
-app.delete('/api/articles/:id', authenticateToken, function (req, res) {
-    try {
-        var articleId_2 = req.params.id;
-        console.log('🗑️ Deleting article:', articleId_2);
-        var articleIndex = articlesStorage.findIndex(function (article) {
-            return article._id === articleId_2 && article.createdBy === req.user.id;
-        });
-        if (articleIndex === -1) {
-            return res.status(404).json({ message: 'Article not found' });
-        }
-        var deletedArticle = articlesStorage.splice(articleIndex, 1)[0];
-        console.log('✅ Article deleted. Total articles:', articlesStorage.length);
-        res.json({
-            success: true,
-            message: 'Article deleted successfully',
-            article: deletedArticle
-        });
-    }
-    catch (error) {
-        console.error('Delete article error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Get article details - PUBLIC
-app.get('/api/articles/:id', function (req, res) {
-    try {
-        var articleId_3 = req.params.id;
-        console.log('📖 Fetching article:', articleId_3);
-        var article = articlesStorage.find(function (a) { return a._id === articleId_3; });
-        if (!article) {
-            return res.status(404).json({ message: 'Article not found' });
-        }
-        // Increment views when someone views details
-        article.views = (article.views || 0) + 1;
-        article.updatedAt = new Date().toISOString();
-        var enhancedArticle = __assign(__assign({}, article), { views: article.views || 0, likes: article.likes || 0, comments: article.comments || [], readTime: article.readTime || '5 min read', hasLiked: false });
-        res.json(enhancedArticle);
-    }
-    catch (error) {
-        console.error('Get article error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Like an article - PUBLIC
-app.post('/api/articles/:id/like', function (req, res) {
-    try {
-        var articleId_4 = req.params.id;
-        console.log('❤️ Liking article:', articleId_4);
-        var articleIndex = articlesStorage.findIndex(function (a) { return a._id === articleId_4; });
-        if (articleIndex === -1) {
-            return res.status(404).json({ message: 'Article not found' });
-        }
-        var article = articlesStorage[articleIndex];
-        if (typeof article.likes !== 'number') {
-            article.likes = 0;
-        }
-        article.likes += 1;
-        article.updatedAt = new Date().toISOString();
-        res.json({
-            success: true,
-            likes: article.likes,
-            hasLiked: true
-        });
-    }
-    catch (error) {
-        console.error('Like article error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Unlike an article - PUBLIC
-app.post('/api/articles/:id/unlike', function (req, res) {
-    try {
-        var articleId_5 = req.params.id;
-        console.log('💔 Unliking article:', articleId_5);
-        var articleIndex = articlesStorage.findIndex(function (a) { return a._id === articleId_5; });
-        if (articleIndex === -1) {
-            return res.status(404).json({ message: 'Article not found' });
-        }
-        var article = articlesStorage[articleIndex];
-        if (article.likes > 0) {
-            article.likes -= 1;
-        }
-        article.updatedAt = new Date().toISOString();
-        res.json({
-            success: true,
-            likes: article.likes,
-            hasLiked: false
-        });
-    }
-    catch (error) {
-        console.error('Unlike article error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Add comment to article - PUBLIC
-app.post('/api/articles/:id/comments', function (req, res) {
-    try {
-        var articleId_6 = req.params.id;
-        var _a = req.body, text = _a.text, user = _a.user;
-        console.log('💬 Adding comment to article:', articleId_6);
-        if (!text || !text.trim()) {
-            return res.status(400).json({ message: 'Comment text is required' });
-        }
-        var articleIndex = articlesStorage.findIndex(function (a) { return a._id === articleId_6; });
-        if (articleIndex === -1) {
-            return res.status(404).json({ message: 'Article not found' });
-        }
-        var article = articlesStorage[articleIndex];
-        if (!Array.isArray(article.comments)) {
-            article.comments = [];
-        }
-        var newComment = {
-            id: Date.now().toString(),
-            text: text.trim(),
-            user: user || 'Anonymous',
-            timestamp: new Date().toISOString(),
-            likes: 0
-        };
-        article.comments.unshift(newComment);
-        article.updatedAt = new Date().toISOString();
-        console.log('✅ Comment added. Total comments:', article.comments.length);
-        res.json({
-            success: true,
-            comment: newComment,
-            totalComments: article.comments.length
-        });
-    }
-    catch (error) {
-        console.error('Add comment error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// VIDEOS API ROUTES
-// Get all published videos - PUBLIC
-app.get('/api/videos', function (req, res) {
-    try {
-        console.log('🎬 Fetching published videos for videos page');
-        var publishedVideos = videosStorage.filter(function (video) { return video.status === 'published'; });
-        console.log('📊 Returning', publishedVideos.length, 'published videos');
-        res.json(publishedVideos);
-    }
-    catch (error) {
-        console.error('Get videos error:', error);
-        res.json([]);
-    }
-});
-// Create video - PROTECTED
-app.post('/api/videos', authenticateToken, function (req, res) {
-    try {
-        console.log('🎥 Creating video by:', req.user.username);
-        var video = __assign(__assign({ _id: Date.now().toString() }, req.body), { views: 0, likes: 0, createdBy: req.user.id, createdByUsername: req.user.username, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-        videosStorage.push(video);
-        console.log('💾 Video saved. Total videos:', videosStorage.length);
-        res.json({
-            success: true,
-            message: "Video ".concat(video.status === 'draft' ? 'saved as draft' : 'published', " successfully"),
-            video: video
-        });
-    }
-    catch (error) {
-        console.error('Create video error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Get user's videos for dashboard - PROTECTED
-app.get('/api/videos/my-videos', authenticateToken, function (req, res) {
-    try {
-        console.log('📹 Fetching videos for user:', req.user.username);
-        var userVideos = videosStorage.filter(function (video) { return video.createdBy === req.user.id; });
-        console.log('📊 Returning', userVideos.length, 'videos for user');
-        res.json(userVideos);
-    }
-    catch (error) {
-        console.error('Get my videos error:', error);
-        res.json([]);
-    }
-});
-// Update video - PROTECTED
-app.put('/api/videos/:id', authenticateToken, function (req, res) {
-    try {
-        var videoId_1 = req.params.id;
-        console.log('✏️ Updating video:', videoId_1);
-        var videoIndex = videosStorage.findIndex(function (video) {
-            return video._id === videoId_1 && video.createdBy === req.user.id;
-        });
-        if (videoIndex === -1) {
-            return res.status(404).json({ message: 'Video not found' });
-        }
-        videosStorage[videoIndex] = __assign(__assign(__assign({}, videosStorage[videoIndex]), req.body), { updatedAt: new Date().toISOString() });
-        console.log('✅ Video updated successfully');
-        res.json({
-            success: true,
-            message: "Video ".concat(videosStorage[videoIndex].status === 'draft' ? 'draft updated' : 'updated and published', " successfully"),
-            video: videosStorage[videoIndex]
-        });
-    }
-    catch (error) {
-        console.error('Update video error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Delete video - PROTECTED
-app.delete('/api/videos/:id', authenticateToken, function (req, res) {
-    try {
-        var videoId_2 = req.params.id;
-        console.log('🗑️ Deleting video:', videoId_2);
-        var videoIndex = videosStorage.findIndex(function (video) {
-            return video._id === videoId_2 && video.createdBy === req.user.id;
-        });
-        if (videoIndex === -1) {
-            return res.status(404).json({ message: 'Video not found' });
-        }
-        var deletedVideo = videosStorage.splice(videoIndex, 1)[0];
-        console.log('✅ Video deleted. Total videos:', videosStorage.length);
-        res.json({
-            success: true,
-            message: 'Video deleted successfully',
-            video: deletedVideo
-        });
-    }
-    catch (error) {
-        console.error('Delete video error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// VIDEO VIEW TRACKING ENDPOINTS
-// Track video view - PUBLIC
-app.post('/api/videos/:id/view', function (req, res) {
-    try {
-        var videoId_3 = req.params.id;
-        console.log('👀 Tracking view for video:', videoId_3);
-        var videoIndex = videosStorage.findIndex(function (video) { return video._id === videoId_3; });
-        if (videoIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                message: 'Video not found'
-            });
-        }
-        var video = videosStorage[videoIndex];
-        // Initialize views if not exists
-        if (typeof video.views !== 'number') {
-            video.views = 0;
-        }
-        // Increment views
-        video.views += 1;
-        video.updatedAt = new Date().toISOString();
-        console.log('✅ View tracked. Total views:', video.views);
-        res.json({
-            success: true,
-            views: video.views,
-            message: 'View tracked successfully'
-        });
-    }
-    catch (error) {
-        console.error('Track view error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-// Get video views - PUBLIC
-app.get('/api/videos/:id/views', function (req, res) {
-    try {
-        var videoId_4 = req.params.id;
-        console.log('📊 Getting views for video:', videoId_4);
-        var video = videosStorage.find(function (video) { return video._id === videoId_4; });
-        if (!video) {
-            return res.status(404).json({
-                success: false,
-                message: 'Video not found'
-            });
-        }
-        var views = video.views || 0;
-        res.json({
-            success: true,
-            views: views,
-            videoId: videoId_4
-        });
-    }
-    catch (error) {
-        console.error('Get views error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
-// Like a video - PUBLIC
-app.post('/api/videos/:id/like', function (req, res) {
-    try {
-        var videoId_5 = req.params.id;
-        console.log('❤️ Liking video:', videoId_5);
-        var videoIndex = videosStorage.findIndex(function (video) { return video._id === videoId_5; });
-        if (videoIndex === -1) {
-            return res.status(404).json({ message: 'Video not found' });
-        }
-        var video = videosStorage[videoIndex];
-        if (typeof video.likes !== 'number') {
-            video.likes = 0;
-        }
-        video.likes += 1;
-        video.updatedAt = new Date().toISOString();
-        res.json({
-            success: true,
-            likes: video.likes,
-            hasLiked: true
-        });
-    }
-    catch (error) {
-        console.error('Like video error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// Unlike a video - PUBLIC
-app.post('/api/videos/:id/unlike', function (req, res) {
-    try {
-        var videoId_6 = req.params.id;
-        console.log('💔 Unliking video:', videoId_6);
-        var videoIndex = videosStorage.findIndex(function (video) { return video._id === videoId_6; });
-        if (videoIndex === -1) {
-            return res.status(404).json({ message: 'Video not found' });
-        }
-        var video = videosStorage[videoIndex];
-        if (video.likes > 0) {
-            video.likes -= 1;
-        }
-        video.updatedAt = new Date().toISOString();
-        res.json({
-            success: true,
-            likes: video.likes,
-            hasLiked: false
-        });
-    }
-    catch (error) {
-        console.error('Unlike video error:', error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-// SEARCH API ROUTE - PUBLIC
-app.get('/api/search', function (req, res) {
-    try {
-        var _a = req.query, query = _a.q, type = _a.type;
-        console.log('🔍 Search request:', { query: query, type: type });
-        if (!query || typeof query !== 'string') {
-            return res.status(400).json({ message: 'Search query is required' });
-        }
-        var searchTerm_1 = query.toLowerCase().trim();
-        // Search in articles
-        var articleResults = articlesStorage
-            .filter(function (article) { return article.status === 'published'; })
-            .filter(function (article) {
-            var _a, _b, _c, _d, _e, _f, _g;
-            var title = typeof article.title === 'string'
-                ? article.title
-                : ((_a = article.title) === null || _a === void 0 ? void 0 : _a.en) || ((_b = article.title) === null || _b === void 0 ? void 0 : _b.ar) || ((_c = article.title) === null || _c === void 0 ? void 0 : _c.ur) || '';
-            var description = typeof article.description === 'string'
-                ? article.description
-                : ((_d = article.description) === null || _d === void 0 ? void 0 : _d.en) || ((_e = article.description) === null || _e === void 0 ? void 0 : _e.ar) || ((_f = article.description) === null || _f === void 0 ? void 0 : _f.ur) || '';
-            return title.toLowerCase().includes(searchTerm_1) ||
-                description.toLowerCase().includes(searchTerm_1) ||
-                ((_g = article.category) === null || _g === void 0 ? void 0 : _g.toLowerCase().includes(searchTerm_1));
-        })
-            .map(function (article) {
-            var _a, _b;
-            return ({
-                id: article._id,
-                title: typeof article.title === 'string' ? article.title : (_a = article.title) === null || _a === void 0 ? void 0 : _a.en,
-                description: typeof article.description === 'string' ? article.description : (_b = article.description) === null || _b === void 0 ? void 0 : _b.en,
-                url: "/article/".concat(article._id),
-                type: 'news',
-                date: article.createdAt,
-                imageUrl: article.imageUrl
-            });
-        });
-        // Search in videos
-        var videoResults = videosStorage
-            .filter(function (video) { return video.status === 'published'; })
-            .filter(function (video) {
-            var _a, _b, _c, _d, _e, _f;
-            var title = typeof video.title === 'string'
-                ? video.title
-                : ((_a = video.title) === null || _a === void 0 ? void 0 : _a.en) || ((_b = video.title) === null || _b === void 0 ? void 0 : _b.ar) || ((_c = video.title) === null || _c === void 0 ? void 0 : _c.ur) || '';
-            var description = typeof video.description === 'string'
-                ? video.description
-                : ((_d = video.description) === null || _d === void 0 ? void 0 : _d.en) || ((_e = video.description) === null || _e === void 0 ? void 0 : _e.ar) || ((_f = video.description) === null || _f === void 0 ? void 0 : _f.ur) || '';
-            return title.toLowerCase().includes(searchTerm_1) ||
-                description.toLowerCase().includes(searchTerm_1);
-        })
-            .map(function (video) {
-            var _a, _b;
-            return ({
-                id: video._id,
-                title: typeof video.title === 'string' ? video.title : (_a = video.title) === null || _a === void 0 ? void 0 : _a.en,
-                description: typeof video.description === 'string' ? video.description : (_b = video.description) === null || _b === void 0 ? void 0 : _b.en,
-                url: "/video/".concat(video._id),
-                type: 'video',
-                duration: '5:30',
-                platform: video.platform
-            });
-        });
-        var results = [];
-        if (type === 'news') {
-            results = articleResults;
-        }
-        else if (type === 'video') {
-            results = videoResults;
+    origin: function (origin, callback) {
+        var allowedOrigins = [
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'https://globalpulse-news-production-31ee.up.railway.app',
+            'https://your-production-domain.com'
+        ];
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
         }
         else {
-            results = __spreadArray(__spreadArray([], articleResults, true), videoResults, true);
+            callback(new Error('Not allowed by CORS'));
         }
-        console.log('🔍 Search results:', results.length);
-        res.json({
-            success: true,
-            data: results,
-            total: results.length,
-            query: searchTerm_1
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+// Apply rate limiting to all routes
+app.use(apiRateLimit);
+// Health check endpoint with detailed information
+app.get('/health', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
+    var dbHealth, healthInfo, statusCode;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, healthCheckDB()];
+            case 1:
+                dbHealth = _a.sent();
+                healthInfo = {
+                    status: dbHealth.status === 'healthy' ? 'healthy' : 'unhealthy',
+                    timestamp: new Date().toISOString(),
+                    service: 'GlobalPulse News API',
+                    version: '1.0.0',
+                    environment: process.env.NODE_ENV || 'development',
+                    uptime: process.uptime(),
+                    memory: process.memoryUsage(),
+                    database: dbHealth,
+                    nodeVersion: process.version,
+                };
+                statusCode = healthInfo.status === 'healthy' ? 200 : 503;
+                res.status(statusCode).json(healthInfo);
+                return [2 /*return*/];
+        }
+    });
+}); });
+// API status endpoint
+app.get('/api/status', function (req, res) {
+    res.json({
+        status: 'operational',
+        service: 'GlobalPulse News API',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        endpoints: {
+            auth: '/api/auth',
+            articles: '/api/articles',
+            videos: '/api/videos',
+            admin: '/api/admin',
+            search: '/api/search'
+        },
+        documentation: '/api/docs'
+    });
+});
+// API documentation endpoint
+app.get('/api/docs', function (req, res) {
+    res.json({
+        name: 'GlobalPulse News API',
+        version: '1.0.0',
+        description: 'Complete news management platform API',
+        documentation: 'See individual endpoint documentation for details',
+        authentication: 'JWT Bearer Token required for protected routes',
+        endpoints: {
+            auth: {
+                'POST /api/auth/login': 'User authentication',
+                'POST /api/auth/register': 'User registration',
+                'GET /api/auth/me': 'Get current user profile'
+            },
+            admin: {
+                'GET /api/admin/users': 'Get all users (Admin only)',
+                'POST /api/admin/users': 'Create user (Admin only)',
+                'PUT /api/admin/users/:id': 'Update user (Admin only)',
+                'DELETE /api/admin/users/:id': 'Delete user (Admin only)',
+                'GET /api/admin/stats': 'Get system statistics (Admin only)'
+            }
+        }
+    });
+});
+// Root endpoint
+app.get('/', function (req, res) {
+    res.json({
+        status: 'OK',
+        message: 'GlobalPulse News API Server',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        documentation: '/api/docs',
+        health: '/health',
+        status: '/api/status'
+    });
+});
+// Setup all API routes
+console.log('🛣️ Initializing API routes...');
+setupRoutes(app);
+// Global error handling middleware
+app.use(function (err, req, res, next) {
+    console.error('❌ Global Error Handler:', {
+        message: err.message,
+        stack: err.stack,
+        url: req.url,
+        method: req.method,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+    });
+    // CORS error
+    if (err.message === 'Not allowed by CORS') {
+        return res.status(403).json({
+            success: false,
+            message: 'CORS policy: Origin not allowed',
+            code: 'CORS_ERROR'
         });
     }
-    catch (error) {
-        console.error('Search error:', error);
-        res.status(500).json({ message: 'Server error' });
+    // Mongoose validation error
+    if (err.name === 'ValidationError') {
+        var errors = Object.values(err.errors).map(function (e) { return e.message; });
+        return res.status(400).json({
+            success: false,
+            message: 'Validation Error',
+            errors: errors,
+            code: 'VALIDATION_ERROR'
+        });
     }
+    // Mongoose duplicate key error
+    if (err.code === 11000) {
+        var field = Object.keys(err.keyValue)[0];
+        return res.status(409).json({
+            success: false,
+            message: "".concat(field, " already exists"),
+            code: 'DUPLICATE_ENTRY'
+        });
+    }
+    // JWT errors
+    if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid token',
+            code: 'INVALID_TOKEN'
+        });
+    }
+    if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({
+            success: false,
+            message: 'Token expired',
+            code: 'TOKEN_EXPIRED'
+        });
+    }
+    // Rate limit error
+    if (err.status === 429) {
+        return res.status(429).json({
+            success: false,
+            message: err.message,
+            code: 'RATE_LIMIT_EXCEEDED'
+        });
+    }
+    // Default error response
+    var statusCode = err.status || 500;
+    var response = {
+        success: false,
+        message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+        code: 'INTERNAL_ERROR'
+    };
+    if (process.env.NODE_ENV === 'development') {
+        response.stack = err.stack;
+        response.details = err;
+    }
+    res.status(statusCode).json(response);
 });
-// Error handling middleware
-app.use(function (err, req, res, next) {
-    console.error('❌ Error:', err);
-    res.status(500).json({ message: 'Internal Server Error' });
-});
-// 404 handler
-app.use(function (req, res) {
-    console.log('❌ 404 - Route not found:', req.method, req.url);
-    res.status(404).json({ message: 'Route not found' });
+// 404 handler - MUST be last
+app.use('*', function (req, res) {
+    console.log("\u274C 404 - Route not found: ".concat(req.method, " ").concat(req.originalUrl));
+    res.status(404).json({
+        success: false,
+        message: "Endpoint ".concat(req.method, " ").concat(req.originalUrl, " not found"),
+        timestamp: new Date().toISOString(),
+        documentation: '/api/docs',
+        availableEndpoints: [
+            'GET /health',
+            'GET /api/status',
+            'GET /api/docs',
+            'POST /api/auth/login',
+            'GET /api/admin/users'
+        ]
+    });
 });
 var httpServer = createServer(app);
-var startServer = function () {
-    var port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
-    console.log('🚀 Starting production server...');
-    console.log('🔧 Port:', port);
-    console.log('🔧 Environment:', process.env.NODE_ENV);
-    httpServer.listen(port, "0.0.0.0", function () {
-        console.log('✅ PRODUCTION SERVER STARTED SUCCESSFULLY!');
-        console.log("\u2705 Listening on port ".concat(port));
-        console.log("\u2705 Health check: http://0.0.0.0:".concat(port, "/health"));
+var startServer = function () { return __awaiter(void 0, void 0, void 0, function () {
+    var port, error_1;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0:
+                port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+                console.log('🔧 Server Configuration:');
+                console.log("   Port: ".concat(port));
+                console.log("   Environment: ".concat(process.env.NODE_ENV || 'development'));
+                console.log("   Node Version: ".concat(process.version));
+                console.log("   Platform: ".concat(process.platform, "/").concat(process.arch));
+                _a.label = 1;
+            case 1:
+                _a.trys.push([1, 3, , 4]);
+                // Connect to MongoDB
+                console.log('🔗 Connecting to MongoDB...');
+                return [4 /*yield*/, connectDB()];
+            case 2:
+                _a.sent();
+                console.log('✅ MongoDB connected successfully');
+                return [3 /*break*/, 4];
+            case 3:
+                error_1 = _a.sent();
+                console.log('💥 CRITICAL: MongoDB connection failed');
+                console.log('🔧 Server cannot start without database connection');
+                process.exit(1);
+                return [3 /*break*/, 4];
+            case 4:
+                httpServer.listen(port, "0.0.0.0", function () {
+                    console.log('🎉 SERVER STARTED SUCCESSFULLY!');
+                    console.log("\u2705 Server running on port ".concat(port));
+                    console.log("\u2705 Health: http://localhost:".concat(port, "/health"));
+                    console.log("\u2705 API Status: http://localhost:".concat(port, "/api/status"));
+                    console.log("\u2705 API Docs: http://localhost:".concat(port, "/api/docs"));
+                    console.log("\u2705 Admin API: http://localhost:".concat(port, "/api/admin/users"));
+                    console.log('');
+                    console.log('📊 System Status:');
+                    console.log('   Database: Connected');
+                    console.log('   Authentication: JWT Enabled');
+                    console.log('   Rate Limiting: Active');
+                    console.log('   CORS: Configured');
+                    console.log('   Security: Helmet Enabled');
+                    console.log('   Compression: Active');
+                });
+                httpServer.on('error', function (error) {
+                    console.error('❌ SERVER STARTUP FAILED:', error);
+                    process.exit(1);
+                });
+                return [2 /*return*/];
+        }
     });
-    httpServer.on('error', function (error) {
-        console.error('❌ SERVER FAILED TO START:', error);
-        process.exit(1);
+}); };
+// Graceful shutdown handling
+var gracefulShutdown = function (signal) { return __awaiter(void 0, void 0, void 0, function () {
+    return __generator(this, function (_a) {
+        console.log("\n\uD83D\uDED1 Received ".concat(signal, " - Shutting down gracefully..."));
+        // Stop accepting new requests
+        httpServer.close(function () { return __awaiter(void 0, void 0, void 0, function () {
+            var error_2;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        console.log('✅ HTTP server closed');
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 3, , 4]);
+                        return [4 /*yield*/, import('./db/connection.js').then(function (_a) {
+                                var disconnectDB = _a.disconnectDB;
+                                return disconnectDB();
+                            })];
+                    case 2:
+                        _a.sent();
+                        return [3 /*break*/, 4];
+                    case 3:
+                        error_2 = _a.sent();
+                        console.error('Error closing database connection:', error_2);
+                        return [3 /*break*/, 4];
+                    case 4:
+                        console.log('✅ Graceful shutdown completed');
+                        process.exit(0);
+                        return [2 /*return*/];
+                }
+            });
+        }); });
+        // Force shutdown after 10 seconds
+        setTimeout(function () {
+            console.log('💥 Forcing shutdown after timeout');
+            process.exit(1);
+        }, 10000);
+        return [2 /*return*/];
     });
-};
+}); };
+process.on('SIGINT', function () { return gracefulShutdown('SIGINT'); });
+process.on('SIGTERM', function () { return gracefulShutdown('SIGTERM'); });
+process.on('unhandledRejection', function (reason, promise) {
+    console.error('❌ Unhandled Promise Rejection at:', promise, 'reason:', reason);
+    // Close server & exit process
+    process.exit(1);
+});
+process.on('uncaughtException', function (error) {
+    console.error('❌ Uncaught Exception:', error);
+    process.exit(1);
+});
+// Start the server
 startServer();

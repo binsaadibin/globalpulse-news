@@ -1083,6 +1083,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        
 
         {/* Article Form */}
         {showArticleForm && (<ArticleForm editingArticle={editingArticle} onSave={handleSaveArticle} onCancel={resetForms} loading={formLoading} translations={t}/>)}

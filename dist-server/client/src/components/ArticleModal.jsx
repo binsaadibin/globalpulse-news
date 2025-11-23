@@ -123,12 +123,15 @@ export default function ArticleModal(_a) {
     var _g = useState(false), commentLoading = _g[0], setCommentLoading = _g[1];
     var t = translations[language];
     useEffect(function () {
+        console.log('🔍 ArticleModal - Received article:', article);
+        console.log('🔍 ArticleModal - Article ID:', article === null || article === void 0 ? void 0 : article._id);
+        console.log('🔍 ArticleModal - Article title:', article === null || article === void 0 ? void 0 : article.title);
         if (article && isOpen) {
             fetchArticleData();
         }
     }, [article, isOpen]);
     var fetchArticleData = function () { return __awaiter(_this, void 0, void 0, function () {
-        var response, data, error_1;
+        var response, articleData, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -138,29 +141,31 @@ export default function ArticleModal(_a) {
                 case 1:
                     _a.trys.push([1, 6, 7, 8]);
                     setLoading(true);
+                    console.log('📡 Fetching article details for:', article._id);
                     return [4 /*yield*/, fetch("".concat(API_BASE_URL, "/api/articles/").concat(article._id))];
                 case 2:
                     response = _a.sent();
                     if (!response.ok) return [3 /*break*/, 4];
                     return [4 /*yield*/, response.json()];
                 case 3:
-                    data = _a.sent();
-                    if (data.success) {
-                        setLikes(data.data.likes || 0);
-                        setComments(data.data.comments || []);
-                        setHasLiked(data.data.hasLiked || false);
-                    }
+                    articleData = _a.sent();
+                    console.log('✅ Article details response:', articleData);
+                    // Your backend returns article directly, not wrapped in success/data
+                    setLikes(articleData.likes || 0);
+                    setComments(articleData.comments || []);
+                    setHasLiked(articleData.hasLiked || false);
                     return [3 /*break*/, 5];
                 case 4:
-                    // Fallback to article data from props
+                    console.log('⚠️ Using fallback article data');
+                    // Fallback to original article data
                     setLikes(article.likes || 0);
                     setComments(article.comments || []);
                     _a.label = 5;
                 case 5: return [3 /*break*/, 8];
                 case 6:
                     error_1 = _a.sent();
-                    console.error('Error fetching article details:', error_1);
-                    // Fallback to article props
+                    console.error('❌ Error fetching article details:', error_1);
+                    // Fallback to original article data
                     setLikes(article.likes || 0);
                     setComments(article.comments || []);
                     return [3 /*break*/, 8];
@@ -203,6 +208,7 @@ export default function ArticleModal(_a) {
                     newLikes = hasLiked ? likes - 1 : likes + 1;
                     setLikes(newLikes);
                     setHasLiked(!hasLiked);
+                    console.log('❤️ Liking article:', article._id);
                     return [4 /*yield*/, fetch("".concat(API_BASE_URL, "/api/articles/").concat(article._id, "/like"), {
                             method: 'POST',
                             headers: {
@@ -211,26 +217,27 @@ export default function ArticleModal(_a) {
                         })];
                 case 2:
                     response = _a.sent();
-                    if (!response.ok) {
-                        // Revert optimistic update if failed
-                        setLikes(hasLiked ? likes + 1 : likes - 1);
-                        setHasLiked(hasLiked);
-                        throw new Error(t.likeError);
-                    }
                     return [4 /*yield*/, response.json()];
                 case 3:
                     data = _a.sent();
-                    if (data.success) {
+                    console.log('✅ Like response:', data);
+                    if (response.ok && data.success) {
+                        // Use the actual response data
                         setLikes(data.likes);
                         setHasLiked(data.hasLiked);
+                    }
+                    else {
+                        // Revert optimistic update if failed
+                        setLikes(hasLiked ? likes + 1 : likes - 1);
+                        setHasLiked(hasLiked);
+                        throw new Error(data.message || t.likeError);
                     }
                     return [3 /*break*/, 5];
                 case 4:
                     error_2 = _a.sent();
-                    console.error('Error liking article:', error_2);
+                    console.error('❌ Error liking article:', error_2);
                     toast({
                         title: t.likeError,
-                        description: t.likeError,
                         variant: 'destructive'
                     });
                     return [3 /*break*/, 5];
@@ -249,6 +256,7 @@ export default function ArticleModal(_a) {
                 case 1:
                     _a.trys.push([1, 4, 5, 6]);
                     setCommentLoading(true);
+                    console.log('💬 Adding comment to article:', article._id);
                     return [4 /*yield*/, fetch("".concat(API_BASE_URL, "/api/articles/").concat(article._id, "/comments"), {
                             method: 'POST',
                             headers: {
@@ -264,6 +272,7 @@ export default function ArticleModal(_a) {
                     return [4 /*yield*/, response.json()];
                 case 3:
                     data_1 = _a.sent();
+                    console.log('✅ Comment response:', data_1);
                     if (response.ok && data_1.success) {
                         setComments(function (prev) { return __spreadArray([data_1.comment], prev, true); });
                         setNewComment('');
@@ -278,7 +287,7 @@ export default function ArticleModal(_a) {
                     return [3 /*break*/, 6];
                 case 4:
                     error_3 = _a.sent();
-                    console.error('Error adding comment:', error_3);
+                    console.error('❌ Error adding comment:', error_3);
                     toast({
                         title: t.commentError,
                         description: error_3.message || t.commentError,
@@ -414,6 +423,13 @@ export default function ArticleModal(_a) {
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg whitespace-pre-line">
               {getDisplayText(article.description)}
             </p>
+            
+            {/* Show article content if available */}
+            {article.content && (<div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">
+                  {getDisplayText(article.content)}
+                </p>
+              </div>)}
           </div>
 
           <div className="border-t border-gray-200 dark:border-gray-600 pt-6">
