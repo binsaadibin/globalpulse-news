@@ -83,7 +83,7 @@ export const createArticle = (req: any, res: Response) => {
   }
 };
 
-// Get user's articles - SIMPLE AND CLEAN
+// Get user's articles - SIMPLE AND CLEAN (EXACTLY LIKE VIDEOS)
 export const getMyArticles = (req: any, res: Response) => {
   try {
     console.log('📚 GET MY ARTICLES - User:', req.user?.username, 'ID:', req.user?.id);
@@ -92,15 +92,15 @@ export const getMyArticles = (req: any, res: Response) => {
       console.log('❌ No user authenticated');
       return res.status(401).json({ 
         success: false,
-        message: 'Authentication required',
-        articles: []
+        message: 'Authentication required'
       });
     }
 
     const userArticles = articles.filter(article => article.createdBy === req.user.id);
     console.log('✅ Found', userArticles.length, 'articles for user', req.user.username);
 
-    res.json(userArticles); // Return array directly, just like getMyVideos
+    // Return array directly, exactly like getMyVideos
+    res.json(userArticles);
     
   } catch (error) {
     console.error('❌ Get my articles error:', error);

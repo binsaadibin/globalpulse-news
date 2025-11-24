@@ -781,26 +781,27 @@ export default function Dashboard() {
     }
   };
 
- const fetchUserArticles = async () => {
+ const API_BASE_URL = 'https://globalpulse-news-production-31ee.up.railway.app';
+
+const fetchUserArticles = async () => {
   try {
-    console.log('🔍 Fetching user articles from /api/articles/my-articles');
+    console.log('🔍 Fetching user articles from Railway...');
+    console.log('🌐 API URL:', `${API_BASE_URL}/api/articles/my-articles`);
     console.log('👤 Current User:', currentUser);
     
     const headers = getAuthHeaders();
-    console.log('🔑 Headers:', headers);
 
     const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
-      headers: headers
+      headers: headers,
+      method: 'GET'
     });
 
     console.log('📊 Response status:', response.status);
-    console.log('📊 Response URL:', response.url);
     
     if (response.ok) {
       const data = await response.json();
       console.log('✅ User articles response:', data);
       
-      // Handle the response format - articles should be directly in the array
       let articlesArray = [];
       
       if (Array.isArray(data)) {
@@ -811,7 +812,7 @@ export default function Dashboard() {
         articlesArray = data.data;
       }
       
-      console.log(`📝 Loaded ${articlesArray.length} user articles`);
+      console.log(`📝 Loaded ${articlesArray.length} user articles from Railway`);
       setArticles(articlesArray);
     } else {
       console.error('❌ Failed to fetch user articles. Status:', response.status);
@@ -823,28 +824,20 @@ export default function Dashboard() {
           variant: 'destructive'
         });
       } else if (response.status === 404) {
-        console.error('❌ Endpoint /api/articles/my-articles not found');
+        console.error('❌ Endpoint /api/articles/my-articles not found on Railway');
         toast({
-          title: 'Service Error',
-          description: 'Articles service not available',
-          variant: 'destructive'
-        });
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Server error:', errorText);
-        toast({
-          title: 'Error',
-          description: 'Failed to load your articles',
+          title: 'Backend Configuration Error',
+          description: 'The articles endpoint is not deployed on Railway yet',
           variant: 'destructive'
         });
       }
       setArticles([]);
     }
   } catch (error) {
-    console.error('❌ Error fetching user articles:', error);
+    console.error('❌ Network error:', error);
     toast({
       title: 'Connection Error',
-      description: 'Failed to connect to server',
+      description: 'Cannot connect to Railway backend',
       variant: 'destructive'
     });
     setArticles([]);
