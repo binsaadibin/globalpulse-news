@@ -2,7 +2,7 @@ import express from 'express';
 import {
   getArticles,
   createArticle,
-  getMyArticles,
+  getMyArticles, // Make sure this is imported
   updateArticle,
   deleteArticle,
   getArticleById,
@@ -23,7 +23,7 @@ router.post('/:id/comments', addComment);
 
 // Protected routes
 router.post('/', authenticateToken, createArticle);
-router.get('/my-articles', authenticateToken, getMyArticles);
+router.get('/my-articles', authenticateToken, getMyArticles); // This route must be here
 router.put('/:id', authenticateToken, updateArticle);
 router.delete('/:id', authenticateToken, deleteArticle);
 
