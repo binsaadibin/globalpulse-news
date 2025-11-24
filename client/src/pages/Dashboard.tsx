@@ -764,12 +764,13 @@ export default function Dashboard() {
   const fetchUserData = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Fetching user data...');
       await Promise.all([
         fetchUserArticles(),
         fetchUserVideos()
       ]);
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('❌ Error fetching user data:', error);
       toast({
         title: t.error,
         description: 'Failed to load your content',
@@ -782,30 +783,60 @@ export default function Dashboard() {
 
   const fetchUserArticles = async () => {
     try {
+      console.log('🔍 Fetching user articles from /api/articles/my-articles');
+      console.log('👤 Current User:', currentUser);
+      
+      const headers = getAuthHeaders();
+      console.log('🔑 Headers:', headers);
+
       const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
-        headers: getAuthHeaders()
+        headers: headers
       });
 
+      console.log('📊 Response status:', response.status);
+      console.log('📊 Response URL:', response.url);
+      
       if (response.ok) {
         const data = await response.json();
-        let articlesArray: Article[] = [];
+        console.log('✅ User articles response:', data);
         
-        if (Array.isArray(data)) {
+        let articlesArray = [];
+        
+        if (data.success && Array.isArray(data.articles)) {
+          articlesArray = data.articles;
+        } else if (Array.isArray(data)) {
           articlesArray = data;
         } else if (data && Array.isArray(data.data)) {
           articlesArray = data.data;
-        } else if (data && Array.isArray(data.articles)) {
-          articlesArray = data.articles;
-        } else if (data && typeof data === 'object') {
-          articlesArray = [data];
         }
         
+        console.log(`📝 Loaded ${articlesArray.length} user articles`);
         setArticles(articlesArray);
       } else {
+        console.error('❌ Failed to fetch user articles. Status:', response.status);
+        if (response.status === 401) {
+          toast({
+            title: 'Authentication Required',
+            description: 'Please log in again',
+            variant: 'destructive'
+          });
+        } else if (response.status === 404) {
+          console.error('❌ Endpoint /api/articles/my-articles not found');
+          toast({
+            title: 'Service Error',
+            description: 'User articles endpoint not available',
+            variant: 'destructive'
+          });
+        }
         setArticles([]);
       }
     } catch (error) {
-      console.error('Failed to fetch articles:', error);
+      console.error('❌ Error fetching user articles:', error);
+      toast({
+        title: t.error,
+        description: 'Failed to load your articles',
+        variant: 'destructive'
+      });
       setArticles([]);
     }
   };
@@ -1414,12 +1445,31 @@ export default function Dashboard() {
               <Card>
                 <CardContent className="p-8 text-center">
                   <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t.noArticles}</h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first article</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    {searchQuery || statusFilter !== 'all' ? 'No matching articles found' : t.noArticles}
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    {searchQuery || statusFilter !== 'all' 
+                      ? 'Try adjusting your search or filter criteria'
+                      : 'Get started by creating your first article'
+                    }
+                  </p>
                   <Button onClick={startCreateArticle}>
                     <Plus className="h-4 w-4 mr-2" />
                     {t.createArticle}
                   </Button>
+                  {(searchQuery || statusFilter !== 'all') && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setSearchQuery('');
+                        setStatusFilter('all');
+                      }}
+                      className="ml-2"
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ) : (

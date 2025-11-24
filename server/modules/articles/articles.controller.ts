@@ -1,7 +1,103 @@
 import { Response } from "express";
-import { articles } from '../../db/mockData.js';
 
-export const getArticles = (req: any, res: Response) => {
+// Mock data - replace with your actual data source
+const articles = [
+  {
+    _id: '1',
+    title: { 
+      en: 'Welcome to GlobalPulse News', 
+      ar: 'مرحبا بكم في GlobalPulse News', 
+      ur: 'GlobalPulse News میں خوش آمدید' 
+    },
+    description: { 
+      en: 'Introduction to GlobalPulse News platform', 
+      ar: 'مقدمة في منصة GlobalPulse News', 
+      ur: 'GlobalPulse News پلیٹ فارم کا تعارف' 
+    },
+    content: { 
+      en: 'This is the first article on our new platform...', 
+      ar: 'هذه هي المقالة الأولى على منصتنا الجديدة...', 
+      ur: 'یہ ہمارے نئے پلیٹ فارم کا پہلا مضمون ہے...' 
+    },
+    category: 'technology',
+    status: 'published',
+    imageUrl: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&h=600&fit=crop',
+    views: 150,
+    likes: 25,
+    comments: [],
+    readTime: '3 min read',
+    createdBy: '1',
+    createdByUsername: 'admin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isFeatured: true,
+    isTrending: false
+  },
+  {
+    _id: '2', 
+    title: { 
+      en: 'Getting Started with Content Creation', 
+      ar: 'بدء إنشاء المحتوى', 
+      ur: 'مواد کی تخلیق کے ساتھ آغاز' 
+    },
+    description: { 
+      en: 'Guide for new content creators', 
+      ar: 'دليل لمنشئي المحتوى الجدد', 
+      ur: 'نئے مواد تخلیق کاروں کے لیے گائیڈ' 
+    },
+    content: { 
+      en: 'Learn how to create amazing content on our platform...', 
+      ar: 'تعلم كيفية إنشاء محتوى رائع على منصتنا...', 
+      ur: 'ہمارے پلیٹ فارم پر حیرت انگیز مواد بنانے کا طریقہ سیکھیں...' 
+    },
+    category: 'technology',
+    status: 'published',
+    imageUrl: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=600&fit=crop',
+    views: 89,
+    likes: 12,
+    comments: [],
+    readTime: '5 min read',
+    createdBy: '2',
+    createdByUsername: 'john_doe',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isFeatured: false,
+    isTrending: true
+  },
+  {
+    _id: '3',
+    title: { 
+      en: 'The Future of Artificial Intelligence', 
+      ar: 'مستقبل الذكاء الاصطناعي', 
+      ur: 'مصنوعی ذہانت کا مستقبل' 
+    },
+    description: { 
+      en: 'Exploring the latest advancements in AI technology', 
+      ar: 'استكشاف أحدث التطورات في تكنولوجيا الذكاء الاصطناعي', 
+      ur: 'AI ٹیکنالوجی میں تازہ ترین ترقیات کی دریافت' 
+    },
+    content: { 
+      en: 'Artificial intelligence is transforming industries worldwide...', 
+      ar: 'الذكاء الاصطناعي يحول الصناعات في جميع أنحاء العالم...', 
+      ur: 'مصنوعی ذہاعت دنیا بھر کی صنعتوں کو تبدیل کر رہی ہے...' 
+    },
+    category: 'technology',
+    status: 'draft',
+    imageUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800&h=600&fit=crop',
+    views: 0,
+    likes: 0,
+    comments: [],
+    readTime: '7 min read',
+    createdBy: '1',
+    createdByUsername: 'admin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isFeatured: false,
+    isTrending: false
+  }
+];
+
+export const getArticles = (req, res) => {
   try {
     console.log('📰 Fetching published articles');
     
@@ -19,11 +115,49 @@ export const getArticles = (req: any, res: Response) => {
     res.json(publishedArticles);
   } catch (error) {
     console.error('Get articles error:', error);
-    res.json([]);
+    res.status(500).json([]);
   }
 };
 
-export const createArticle = (req: any, res: Response) => {
+export const getMyArticles = async (req, res) => {
+  try {
+    console.log('📚 GET MY ARTICLES - User:', req.user?.username, 'ID:', req.user?.id);
+    
+    if (!req.user || !req.user.id) {
+      console.log('❌ No user authenticated');
+      return res.status(401).json({ 
+        success: false,
+        message: 'Authentication required',
+        articles: [],
+        count: 0
+      });
+    }
+
+    const userArticles = articles.filter(article => {
+      const matches = article.createdBy === req.user.id;
+      console.log(`📝 Article ${article._id}: createdBy=${article.createdBy}, user=${req.user.id}, matches=${matches}`);
+      return matches;
+    });
+
+    console.log(`✅ Found ${userArticles.length} articles for user ${req.user.username}`);
+    
+    res.json({
+      success: true,
+      articles: userArticles,
+      count: userArticles.length
+    });
+  } catch (error) {
+    console.error('❌ Get my articles error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to fetch user articles',
+      articles: [],
+      count: 0
+    });
+  }
+};
+
+export const createArticle = (req, res) => {
   try {
     console.log('📝 Creating article by:', req.user.username);
 
@@ -50,32 +184,14 @@ export const createArticle = (req: any, res: Response) => {
     });
   } catch (error) {
     console.error('Create article error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error creating article'
+    });
   }
 };
 
-export const getMyArticles = (req: any, res: Response) => {
-  try {
-    console.log('📚 Fetching articles for user:', req.user.username);
-    
-    const userArticles = articles
-      .filter(article => article.createdBy === req.user.id)
-      .map(article => ({
-        ...article,
-        views: article.views || 0,
-        likes: article.likes || 0,
-        comments: article.comments || []
-      }));
-    
-    console.log('📊 Returning', userArticles.length, 'articles for user');
-    res.json(userArticles);
-  } catch (error) {
-    console.error('Get my articles error:', error);
-    res.json([]);
-  }
-};
-
-export const updateArticle = (req: any, res: Response) => {
+export const updateArticle = (req, res) => {
   try {
     const articleId = req.params.id;
     console.log('✏️ Updating article:', articleId);
@@ -85,7 +201,10 @@ export const updateArticle = (req: any, res: Response) => {
     );
 
     if (articleIndex === -1) {
-      return res.status(404).json({ message: 'Article not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Article not found' 
+      });
     }
 
     const updatedArticle = {
@@ -105,11 +224,14 @@ export const updateArticle = (req: any, res: Response) => {
     });
   } catch (error) {
     console.error('Update article error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error updating article'
+    });
   }
 };
 
-export const deleteArticle = (req: any, res: Response) => {
+export const deleteArticle = (req, res) => {
   try {
     const articleId = req.params.id;
     console.log('🗑️ Deleting article:', articleId);
@@ -119,7 +241,10 @@ export const deleteArticle = (req: any, res: Response) => {
     );
 
     if (articleIndex === -1) {
-      return res.status(404).json({ message: 'Article not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Article not found' 
+      });
     }
 
     const deletedArticle = articles.splice(articleIndex, 1)[0];
@@ -132,11 +257,14 @@ export const deleteArticle = (req: any, res: Response) => {
     });
   } catch (error) {
     console.error('Delete article error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error deleting article'
+    });
   }
 };
 
-export const getArticleById = (req: any, res: Response) => {
+export const getArticleById = (req, res) => {
   try {
     const articleId = req.params.id;
     console.log('📖 Fetching article:', articleId);
@@ -144,7 +272,10 @@ export const getArticleById = (req: any, res: Response) => {
     const article = articles.find(a => a._id === articleId);
     
     if (!article) {
-      return res.status(404).json({ message: 'Article not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Article not found' 
+      });
     }
 
     article.views = (article.views || 0) + 1;
@@ -162,11 +293,14 @@ export const getArticleById = (req: any, res: Response) => {
     res.json(enhancedArticle);
   } catch (error) {
     console.error('Get article error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error fetching article'
+    });
   }
 };
 
-export const likeArticle = (req: any, res: Response) => {
+export const likeArticle = (req, res) => {
   try {
     const articleId = req.params.id;
     console.log('❤️ Liking article:', articleId);
@@ -174,7 +308,10 @@ export const likeArticle = (req: any, res: Response) => {
     const articleIndex = articles.findIndex(a => a._id === articleId);
     
     if (articleIndex === -1) {
-      return res.status(404).json({ message: 'Article not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Article not found' 
+      });
     }
 
     const article = articles[articleIndex];
@@ -193,11 +330,14 @@ export const likeArticle = (req: any, res: Response) => {
     });
   } catch (error) {
     console.error('Like article error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error liking article'
+    });
   }
 };
 
-export const unlikeArticle = (req: any, res: Response) => {
+export const unlikeArticle = (req, res) => {
   try {
     const articleId = req.params.id;
     console.log('💔 Unliking article:', articleId);
@@ -205,7 +345,10 @@ export const unlikeArticle = (req: any, res: Response) => {
     const articleIndex = articles.findIndex(a => a._id === articleId);
     
     if (articleIndex === -1) {
-      return res.status(404).json({ message: 'Article not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Article not found' 
+      });
     }
 
     const article = articles[articleIndex];
@@ -223,11 +366,14 @@ export const unlikeArticle = (req: any, res: Response) => {
     });
   } catch (error) {
     console.error('Unlike article error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error unliking article'
+    });
   }
 };
 
-export const addComment = (req: any, res: Response) => {
+export const addComment = (req, res) => {
   try {
     const articleId = req.params.id;
     const { text, user } = req.body;
@@ -235,13 +381,19 @@ export const addComment = (req: any, res: Response) => {
     console.log('💬 Adding comment to article:', articleId);
 
     if (!text || !text.trim()) {
-      return res.status(400).json({ message: 'Comment text is required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Comment text is required' 
+      });
     }
 
     const articleIndex = articles.findIndex(a => a._id === articleId);
     
     if (articleIndex === -1) {
-      return res.status(404).json({ message: 'Article not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Article not found' 
+      });
     }
 
     const article = articles[articleIndex];
@@ -270,6 +422,9 @@ export const addComment = (req: any, res: Response) => {
     });
   } catch (error) {
     console.error('Add comment error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error adding comment'
+    });
   }
 };
