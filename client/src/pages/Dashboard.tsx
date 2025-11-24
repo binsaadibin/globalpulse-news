@@ -4,13 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { ArticleForm } from '@/components/ArticleForm';
+import { VideoForm } from '@/components/VideoForm';
 import { Plus, Edit, Trash2, Eye, Video, FileText, Calendar, Users, TrendingUp, Star, Search, Filter, Save, Send, X, Link, Image } from 'lucide-react';
 
 const translations = {
@@ -295,448 +294,6 @@ interface Video {
   thumbnailUrl?: string;
 }
 
-// Article Form Component
-function ArticleForm({ editingArticle, onSave, onCancel, loading, translations }: any) {
-  const [formData, setFormData] = useState({
-    title: editingArticle?.title || { en: '', ar: '', ur: '' },
-    description: editingArticle?.description || { en: '', ar: '', ur: '' },
-    content: editingArticle?.content || { en: '', ar: '', ur: '' },
-    category: editingArticle?.category || 'technology',
-    imageUrl: editingArticle?.imageUrl || '',
-    readTime: editingArticle?.readTime?.replace(' min read', '') || '5',
-    status: editingArticle?.status || 'draft',
-    isFeatured: editingArticle?.isFeatured || false,
-    isTrending: editingArticle?.isTrending || false,
-  });
-
-  const handleSubmit = (status: 'draft' | 'published') => {
-    onSave({
-      ...formData,
-      status,
-      readTime: `${formData.readTime} min read`
-    });
-  };
-
-  return (
-    <Card className="mb-8 border-2 border-blue-200 dark:border-blue-800">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>{editingArticle ? translations.update : translations.create} {translations.createArticle}</span>
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            <X className="h-4 w-4" />
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-6">
-          {/* Article Title Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.titleEn} *</label>
-              <Input
-                value={formData.title.en || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  title: { ...prev.title, en: e.target.value }
-                }))}
-                placeholder="Enter title in English"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.titleAr}</label>
-              <Input
-                value={formData.title.ar || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  title: { ...prev.title, ar: e.target.value }
-                }))}
-                placeholder="Enter title in Arabic"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.titleUr}</label>
-              <Input
-                value={formData.title.ur || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  title: { ...prev.title, ur: e.target.value }
-                }))}
-                placeholder="Enter title in Urdu"
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {/* Article Description Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.descriptionEn} *</label>
-              <Textarea
-                value={formData.description.en || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  description: { ...prev.description, en: e.target.value }
-                }))}
-                placeholder="Enter description in English"
-                rows={3}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.descriptionAr}</label>
-              <Textarea
-                value={formData.description.ar || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  description: { ...prev.description, ar: e.target.value }
-                }))}
-                placeholder="Enter description in Arabic"
-                rows={3}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.descriptionUr}</label>
-              <Textarea
-                value={formData.description.ur || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  description: { ...prev.description, ur: e.target.value }
-                }))}
-                placeholder="Enter description in Urdu"
-                rows={3}
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {/* Article Content Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.contentEn} *</label>
-              <Textarea
-                value={formData.content.en || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  content: { ...prev.content, en: e.target.value }
-                }))}
-                placeholder={translations.articleContent}
-                rows={6}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.contentAr}</label>
-              <Textarea
-                value={formData.content.ar || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  content: { ...prev.content, ar: e.target.value }
-                }))}
-                placeholder={translations.articleContent}
-                rows={6}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.contentUr}</label>
-              <Textarea
-                value={formData.content.ur || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  content: { ...prev.content, ur: e.target.value }
-                }))}
-                placeholder={translations.articleContent}
-                rows={6}
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.category}</label>
-              <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="technology">{translations.technology}</SelectItem>
-                  <SelectItem value="business">{translations.business}</SelectItem>
-                  <SelectItem value="sports">{translations.sports}</SelectItem>
-                  <SelectItem value="politics">{translations.politics}</SelectItem>
-                  <SelectItem value="environment">{translations.environment}</SelectItem>
-                  <SelectItem value="health">{translations.health}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.readTime} ({translations.minutes})</label>
-              <Input
-                type="number"
-                value={formData.readTime}
-                onChange={(e) => setFormData(prev => ({ ...prev, readTime: e.target.value }))}
-                placeholder="5"
-                min="1"
-                max="60"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="text-sm font-medium mb-2 block">{translations.imageUrl}</label>
-              <Input
-                value={formData.imageUrl}
-                onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
-          </div>
-
-          {/* Featured & Trending Toggles */}
-          <div className="flex gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={formData.isFeatured}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isFeatured: checked }))}
-              />
-              <Label className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-yellow-500" />
-                {translations.makeFeatured}
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={formData.isTrending}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isTrending: checked }))}
-              />
-              <Label className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-orange-500" />
-                {translations.makeTrending}
-              </Label>
-            </div>
-          </div>
-
-          <div className="flex gap-4 justify-end pt-4 border-t">
-            <Button variant="outline" onClick={onCancel} disabled={loading}>
-              {translations.cancel}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => handleSubmit('draft')} 
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <Save className="h-4 w-4" />
-              {translations.saveDraft}
-            </Button>
-            <Button 
-              onClick={() => handleSubmit('published')} 
-              disabled={loading}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <Send className="h-4 w-4" />
-              {translations.publish}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// Video Form Component
-function VideoForm({ editingVideo, onSave, onCancel, loading, translations }: any) {
-  const [formData, setFormData] = useState({
-    title: editingVideo?.title || { en: '', ar: '', ur: '' },
-    videoUrl: editingVideo?.videoUrl || '',
-    platform: editingVideo?.platform || 'youtube',
-    category: editingVideo?.category || 'technology',
-    thumbnailUrl: editingVideo?.thumbnailUrl || '',
-    status: editingVideo?.status || 'draft',
-    isFeatured: editingVideo?.isFeatured || false,
-    isTrending: editingVideo?.isTrending || false,
-  });
-
-  const handleSubmit = (status: 'draft' | 'published') => {
-    onSave({
-      ...formData,
-      status
-    });
-  };
-
-  return (
-    <Card className="mb-8 border-2 border-green-200 dark:border-green-800">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Video className="h-5 w-5" />
-            <span>{editingVideo ? translations.update : translations.create} {translations.createVideo}</span>
-          </span>
-          <Button variant="ghost" size="sm" onClick={onCancel}>
-            <X className="h-4 w-4" />
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 gap-6">
-          {/* Video Title Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.videoTitleEn} *</label>
-              <Input
-                value={formData.title.en || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  title: { ...prev.title, en: e.target.value }
-                }))}
-                placeholder="Enter video title in English"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.videoTitleAr}</label>
-              <Input
-                value={formData.title.ar || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  title: { ...prev.title, ar: e.target.value }
-                }))}
-                placeholder="Enter video title in Arabic"
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.videoTitleUr}</label>
-              <Input
-                value={formData.title.ur || ''}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  title: { ...prev.title, ur: e.target.value }
-                }))}
-                placeholder="Enter video title in Urdu"
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          {/* Video URL and Platform */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.videoUrl} *</label>
-              <div className="relative">
-                <Link className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={formData.videoUrl}
-                  onChange={(e) => setFormData(prev => ({ ...prev, videoUrl: e.target.value }))}
-                  placeholder="https://youtube.com/watch?v=..."
-                  className="w-full pl-10"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.platform}</label>
-              <Select value={formData.platform} onValueChange={(value) => setFormData(prev => ({ ...prev, platform: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="youtube">{translations.youtube}</SelectItem>
-                  <SelectItem value="vimeo">{translations.vimeo}</SelectItem>
-                  <SelectItem value="other">{translations.other}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Thumbnail and Category */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.thumbnail}</label>
-              <div className="relative">
-                <Image className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  value={formData.thumbnailUrl}
-                  onChange={(e) => setFormData(prev => ({ ...prev, thumbnailUrl: e.target.value }))}
-                  placeholder="https://example.com/thumbnail.jpg"
-                  className="w-full pl-10"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block">{translations.category}</label>
-              <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="technology">{translations.technology}</SelectItem>
-                  <SelectItem value="business">{translations.business}</SelectItem>
-                  <SelectItem value="sports">{translations.sports}</SelectItem>
-                  <SelectItem value="politics">{translations.politics}</SelectItem>
-                  <SelectItem value="environment">{translations.environment}</SelectItem>
-                  <SelectItem value="health">{translations.health}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Featured & Trending Toggles */}
-          <div className="flex gap-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={formData.isFeatured}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isFeatured: checked }))}
-              />
-              <Label className="flex items-center gap-2">
-                <Star className="h-4 w-4 text-yellow-500" />
-                {translations.makeFeatured}
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                checked={formData.isTrending}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isTrending: checked }))}
-              />
-              <Label className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-orange-500" />
-                {translations.makeTrending}
-              </Label>
-            </div>
-          </div>
-
-          <div className="flex gap-4 justify-end pt-4 border-t">
-            <Button variant="outline" onClick={onCancel} disabled={loading}>
-              {translations.cancel}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => handleSubmit('draft')} 
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <Save className="h-4 w-4" />
-              {translations.saveDraft}
-            </Button>
-            <Button 
-              onClick={() => handleSubmit('published')} 
-              disabled={loading}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <Send className="h-4 w-4" />
-              {translations.publish}
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function Dashboard() {
   const { language } = useLanguage();
   const { toast } = useToast();
@@ -781,68 +338,67 @@ export default function Dashboard() {
     }
   };
 
- const API_BASE_URL = 'https://globalpulse-news-production-31ee.up.railway.app';
-
-const fetchUserArticles = async () => {
-  try {
-    console.log('🔍 Fetching user articles from Railway...');
-    console.log('🌐 API URL:', `${API_BASE_URL}/api/articles/my-articles`);
-    console.log('👤 Current User:', currentUser);
-    
-    const headers = getAuthHeaders();
-
-    const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
-      headers: headers,
-      method: 'GET'
-    });
-
-    console.log('📊 Response status:', response.status);
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('✅ User articles response:', data);
+  const fetchUserArticles = async () => {
+    try {
+      console.log('🔍 Fetching user articles from Railway...');
+      console.log('🌐 API URL:', `${API_BASE_URL}/api/articles/my-articles`);
+      console.log('👤 Current User:', currentUser);
       
-      let articlesArray = [];
+      const headers = getAuthHeaders();
+
+      const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
+        headers: headers,
+        method: 'GET'
+      });
+
+      console.log('📊 Response status:', response.status);
       
-      if (Array.isArray(data)) {
-        articlesArray = data;
-      } else if (data && Array.isArray(data.articles)) {
-        articlesArray = data.articles;
-      } else if (data && Array.isArray(data.data)) {
-        articlesArray = data.data;
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ User articles response:', data);
+        
+        let articlesArray = [];
+        
+        if (Array.isArray(data)) {
+          articlesArray = data;
+        } else if (data && Array.isArray(data.articles)) {
+          articlesArray = data.articles;
+        } else if (data && Array.isArray(data.data)) {
+          articlesArray = data.data;
+        }
+        
+        console.log(`📝 Loaded ${articlesArray.length} user articles from Railway`);
+        setArticles(articlesArray);
+      } else {
+        console.error('❌ Failed to fetch user articles. Status:', response.status);
+        
+        if (response.status === 401) {
+          toast({
+            title: 'Authentication Required',
+            description: 'Please log in again',
+            variant: 'destructive'
+          });
+        } else if (response.status === 404) {
+          console.error('❌ Endpoint /api/articles/my-articles not found on Railway');
+          toast({
+            title: 'Backend Configuration Error',
+            description: 'The articles endpoint is not deployed on Railway yet',
+            variant: 'destructive'
+          });
+        }
+        setArticles([]);
       }
-      
-      console.log(`📝 Loaded ${articlesArray.length} user articles from Railway`);
-      setArticles(articlesArray);
-    } else {
-      console.error('❌ Failed to fetch user articles. Status:', response.status);
-      
-      if (response.status === 401) {
-        toast({
-          title: 'Authentication Required',
-          description: 'Please log in again',
-          variant: 'destructive'
-        });
-      } else if (response.status === 404) {
-        console.error('❌ Endpoint /api/articles/my-articles not found on Railway');
-        toast({
-          title: 'Backend Configuration Error',
-          description: 'The articles endpoint is not deployed on Railway yet',
-          variant: 'destructive'
-        });
-      }
+    } catch (error) {
+      console.error('❌ Network error:', error);
+      toast({
+        title: 'Connection Error',
+        description: 'Cannot connect to Railway backend',
+        variant: 'destructive'
+      });
       setArticles([]);
     }
-  } catch (error) {
-    console.error('❌ Network error:', error);
-    toast({
-      title: 'Connection Error',
-      description: 'Cannot connect to Railway backend',
-      variant: 'destructive'
-    });
-    setArticles([]);
-  }
-};
+  };
+
   const fetchUserVideos = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/videos/my-videos`, {

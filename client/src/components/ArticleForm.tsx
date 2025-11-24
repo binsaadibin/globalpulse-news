@@ -6,13 +6,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Save, Send, X } from 'lucide-react';
+import { Save, Send, X, Star, TrendingUp } from 'lucide-react';
 
 interface ArticleFormProps {
   editingArticle?: any;
-  onSave: (articleData: any) => void;
+  onSave: (data: any) => void;
   onCancel: () => void;
-  loading?: boolean;
+  loading: boolean;
   translations: any;
 }
 

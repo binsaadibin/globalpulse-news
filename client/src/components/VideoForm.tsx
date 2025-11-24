@@ -5,13 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Save, Send, X, Link, Image, Video, Star, TrendingUp } from 'lucide-react';
+import { Save, Send, X, Star, TrendingUp, Video, Link, Image } from 'lucide-react';
 
 interface VideoFormProps {
   editingVideo?: any;
-  onSave: (videoData: any) => void;
+  onSave: (data: any) => void;
   onCancel: () => void;
-  loading?: boolean;
+  loading: boolean;
   translations: any;
 }
 
