@@ -1,7 +1,70 @@
 import { Request, Response } from "express";
 
 // Mock data - replace this with your actual database operations
-let articles: any[] = [];
+let articles: any[] = [
+  {
+    _id: '1',
+    title: { 
+      en: 'Welcome to GlobalPulse News', 
+      ar: 'مرحبا بكم في GlobalPulse News', 
+      ur: 'GlobalPulse News میں خوش آمدید' 
+    },
+    description: { 
+      en: 'Introduction to GlobalPulse News platform', 
+      ar: 'مقدمة في منصة GlobalPulse News', 
+      ur: 'GlobalPulse News پلیٹ فارم کا تعارف' 
+    },
+    content: { 
+      en: 'This is the first article on our new platform...', 
+      ar: 'هذه هي المقالة الأولى على منصتنا الجديدة...', 
+      ur: 'یہ ہمارے نئے پلیٹ فارم کا پہلا مضمون ہے...' 
+    },
+    category: 'technology',
+    status: 'published',
+    imageUrl: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&h=600&fit=crop',
+    views: 150,
+    likes: 25,
+    comments: [],
+    readTime: '3 min read',
+    createdBy: '1',
+    createdByUsername: 'admin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isFeatured: true,
+    isTrending: false
+  },
+  {
+    _id: '2', 
+    title: { 
+      en: 'Getting Started with Content Creation', 
+      ar: 'بدء إنشاء المحتوى', 
+      ur: 'مواد کی تخلیق کے ساتھ آغاز' 
+    },
+    description: { 
+      en: 'Guide for new content creators', 
+      ar: 'دليل لمنشئي المحتوى الجدد', 
+      ur: 'نئے مواد تخلیق کاروں کے لیے گائیڈ' 
+    },
+    content: { 
+      en: 'Learn how to create amazing content on our platform...', 
+      ar: 'تعلم كيفية إنشاء محتوى رائع على منصتنا...', 
+      ur: 'ہمارے پلیٹ فارم پر حیرت انگیز مواد بنانے کا طریقہ سیکھیں...' 
+    },
+    category: 'technology',
+    status: 'published',
+    imageUrl: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=800&h=600&fit=crop',
+    views: 89,
+    likes: 12,
+    comments: [],
+    readTime: '5 min read',
+    createdBy: '1',
+    createdByUsername: 'admin',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    isFeatured: false,
+    isTrending: true
+  }
+];
 
 // Get user's articles
 export const getMyArticles = async (req: Request, res: Response) => {

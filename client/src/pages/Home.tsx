@@ -133,7 +133,7 @@ export default function Home() {
     } catch (error) {
       console.error('❌ Error fetching articles:', error);
       setError('Failed to load articles from server');
-      setArticles([]); // Empty array - no default content
+      setArticles([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
