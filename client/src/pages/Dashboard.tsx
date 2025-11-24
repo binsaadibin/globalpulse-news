@@ -781,63 +781,75 @@ export default function Dashboard() {
     }
   };
 
-  const fetchUserArticles = async () => {
-    try {
-      console.log('🔍 Fetching user articles from /api/articles/my-articles');
-      console.log('👤 Current User:', currentUser);
-      
-      const headers = getAuthHeaders();
-      console.log('🔑 Headers:', headers);
+ const fetchUserArticles = async () => {
+  try {
+    console.log('🔍 Fetching user articles from /api/articles/my-articles');
+    console.log('👤 Current User:', currentUser);
+    
+    const headers = getAuthHeaders();
+    console.log('🔑 Headers:', headers);
 
-      const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
-        headers: headers
-      });
+    const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
+      headers: headers
+    });
 
-      console.log('📊 Response status:', response.status);
-      console.log('📊 Response URL:', response.url);
+    console.log('📊 Response status:', response.status);
+    console.log('📊 Response URL:', response.url);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('✅ User articles response:', data);
       
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ User articles response:', data);
-        
-        let articlesArray = [];
-        
-        if (data.success && Array.isArray(data.articles)) {
-          articlesArray = data.articles;
-        } else if (Array.isArray(data)) {
-          articlesArray = data;
-        } else if (data && Array.isArray(data.data)) {
-          articlesArray = data.data;
-        }
-        
-        console.log(`📝 Loaded ${articlesArray.length} user articles`);
-        setArticles(articlesArray);
-      } else {
-        console.error('❌ Failed to fetch user articles. Status:', response.status);
-        if (response.status === 401) {
-          toast({
-            title: 'Authentication Required',
-            description: 'Please log in again',
-            variant: 'destructive'
-          });
-        } else if (response.status === 404) {
-          console.error('❌ Endpoint /api/articles/my-articles not found');
-          // Set empty array instead of showing error
-          setArticles([]);
-        }
-        setArticles([]);
+      // Handle the response format - articles should be directly in the array
+      let articlesArray = [];
+      
+      if (Array.isArray(data)) {
+        articlesArray = data;
+      } else if (data && Array.isArray(data.articles)) {
+        articlesArray = data.articles;
+      } else if (data && Array.isArray(data.data)) {
+        articlesArray = data.data;
       }
-    } catch (error) {
-      console.error('❌ Error fetching user articles:', error);
-      toast({
-        title: t.error,
-        description: 'Failed to load your articles',
-        variant: 'destructive'
-      });
+      
+      console.log(`📝 Loaded ${articlesArray.length} user articles`);
+      setArticles(articlesArray);
+    } else {
+      console.error('❌ Failed to fetch user articles. Status:', response.status);
+      
+      if (response.status === 401) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please log in again',
+          variant: 'destructive'
+        });
+      } else if (response.status === 404) {
+        console.error('❌ Endpoint /api/articles/my-articles not found');
+        toast({
+          title: 'Service Error',
+          description: 'Articles service not available',
+          variant: 'destructive'
+        });
+      } else {
+        const errorText = await response.text();
+        console.error('❌ Server error:', errorText);
+        toast({
+          title: 'Error',
+          description: 'Failed to load your articles',
+          variant: 'destructive'
+        });
+      }
       setArticles([]);
     }
-  };
-
+  } catch (error) {
+    console.error('❌ Error fetching user articles:', error);
+    toast({
+      title: 'Connection Error',
+      description: 'Failed to connect to server',
+      variant: 'destructive'
+    });
+    setArticles([]);
+  }
+};
   const fetchUserVideos = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/videos/my-videos`, {

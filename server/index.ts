@@ -14,6 +14,66 @@ console.log('🚀 GlobalPulse News API Server Starting...');
 const app = express();
 
 // ========================
+// CORS CONFIGURATION - UPDATED FOR NETLIFY
+// ========================
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://globalplus.netlify.app',
+      'https://globalplus-news.netlify.app',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://globalpulse-news-production-31ee.up.railway.app',
+      'https://*.netlify.app',
+      'https://*.railway.app'
+    ];
+    
+    // Check if the origin is in the allowed list or matches wildcard patterns
+    if (allowedOrigins.some(allowed => {
+      if (allowed.includes('*')) {
+        const regex = new RegExp('^' + allowed.replace('*', '.*') + '$');
+        return regex.test(origin);
+      }
+      return allowed === origin;
+    })) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked for origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'X-API-Key', 
+    'Origin', 
+    'Accept',
+    'x-auth-token'
+  ],
+  exposedHeaders: [
+    'X-Response-Time', 
+    'X-Powered-By', 
+    'Content-Range', 
+    'X-Total-Count'
+  ],
+  optionsSuccessStatus: 200,
+  preflightContinue: false,
+  maxAge: 86400 // 24 hours
+};
+
+// Apply CORS middleware first
+app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
+
+// ========================
 // SECURITY MIDDLEWARE
 // ========================
 app.use(helmet({
@@ -24,8 +84,8 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       scriptSrc: ["'self'"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:", "http:"],
+      connectSrc: ["'self'", "https:", "http:"],
     },
   },
 }));
@@ -55,28 +115,30 @@ app.use(express.urlencoded({
 }));
 
 // ========================
-// CORS CONFIGURATION - FIXED
-// ========================
-const corsOptions = {
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://globalpulse-news-production-31ee.up.railway.app',
-    'https://your-frontend-domain.vercel.app' // Add your actual frontend domain
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key'],
-  exposedHeaders: ['X-Response-Time', 'X-Powered-By']
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-
-// ========================
 // RATE LIMITING
 // ========================
 app.use(apiRateLimit);
+
+// ========================
+// CORS TEST ENDPOINT
+// ========================
+app.get('/api/cors-test', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'CORS is working correctly! 🎉',
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin,
+    headers: req.headers,
+    cors: {
+      enabled: true,
+      allowedOrigins: [
+        'https://globalplus.netlify.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+      ]
+    }
+  });
+});
 
 // ========================
 // HEALTH CHECK & STATUS
@@ -93,6 +155,14 @@ app.get('/health', async (req: Request, res: Response) => {
     memory: process.memoryUsage(),
     database: dbHealth,
     nodeVersion: process.version,
+    cors: {
+      enabled: true,
+      allowedOrigins: [
+        'https://globalplus.netlify.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+      ]
+    }
   };
 
   const statusCode = healthInfo.status === 'healthy' ? 200 : 503;
@@ -106,6 +176,14 @@ app.get('/api/status', (req: Request, res: Response) => {
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
+    cors: {
+      enabled: true,
+      allowedOrigins: [
+        'https://globalplus.netlify.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+      ]
+    },
     endpoints: {
       auth: '/api/auth',
       articles: '/api/articles',
@@ -127,26 +205,36 @@ app.get('/api/docs', (req: Request, res: Response) => {
     description: 'Complete news management platform API',
     baseUrl: 'https://globalpulse-news-production-31ee.up.railway.app',
     authentication: 'JWT Bearer Token',
+    cors: {
+      enabled: true,
+      allowedOrigins: [
+        'https://globalplus.netlify.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+      ]
+    },
     endpoints: {
       health: {
-        'GET /health': 'Health check and system status'
+        'GET /health': 'Health check and system status',
+        'GET /api/cors-test': 'Test CORS configuration'
       },
       auth: {
         'POST /api/auth/login': 'User authentication',
         'POST /api/auth/register': 'User registration',
         'GET /api/auth/me': 'Get current user profile'
       },
-      admin: {
-        'GET /api/admin/users': 'Get all users (Admin only)',
-        'POST /api/admin/users': 'Create user (Admin only)',
-        'PUT /api/admin/users/:id': 'Update user (Admin only)',
-        'DELETE /api/admin/users/:id': 'Delete user (Admin only)',
-        'GET /api/admin/stats': 'Get system statistics (Admin only)'
-      },
       articles: {
-        'GET /api/articles': 'Get published articles',
+        'GET /api/articles': 'Get all published articles',
         'GET /api/articles/:id': 'Get article by ID',
-        'POST /api/articles': 'Create article (Authenticated)'
+        'POST /api/articles': 'Create article (Authenticated)',
+        'GET /api/articles/my-articles': 'Get user articles (Authenticated)',
+        'PUT /api/articles/:id': 'Update article (Authenticated)',
+        'DELETE /api/articles/:id': 'Delete article (Authenticated)'
+      },
+      videos: {
+        'GET /api/videos': 'Get all published videos',
+        'POST /api/videos': 'Create video (Authenticated)',
+        'GET /api/videos/my-videos': 'Get user videos (Authenticated)'
       }
     }
   });
@@ -163,7 +251,16 @@ app.get('/', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     documentation: '/api/docs',
     health: '/health',
-    statusEndpoint: '/api/status'
+    statusEndpoint: '/api/status',
+    corsTest: '/api/cors-test',
+    cors: {
+      enabled: true,
+      allowedOrigins: [
+        'https://globalplus.netlify.app',
+        'http://localhost:5173',
+        'http://localhost:3000'
+      ]
+    }
   });
 });
 
@@ -191,7 +288,8 @@ app.use('*', (req: Request, res: Response) => {
       'GET /health',
       'GET /api/status',
       'GET /api/docs',
-      'GET /api/admin/users'
+      'GET /api/cors-test',
+      'GET /api/articles'
     ]
   });
 });
@@ -212,6 +310,12 @@ class ServerManager {
     console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`   Node Version: ${process.version}`);
     console.log(`   Platform: ${process.platform}/${process.arch}`);
+    console.log(`   CORS Enabled: true`);
+    console.log(`   Allowed Origins: ${[
+      'https://globalplus.netlify.app',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ].join(', ')}`);
 
     try {
       await this.initializeDatabase();
@@ -253,13 +357,14 @@ class ServerManager {
     console.log(`✅ Health: http://localhost:${port}/health`);
     console.log(`✅ API Status: http://localhost:${port}/api/status`);
     console.log(`✅ API Docs: http://localhost:${port}/api/docs`);
-    console.log(`✅ Admin API: http://localhost:${port}/api/admin/users`);
+    console.log(`✅ CORS Test: http://localhost:${port}/api/cors-test`);
+    console.log(`✅ CORS: Enabled for Netlify frontend`);
     console.log('');
     console.log('📊 System Status:');
     console.log('   Database: Connected');
     console.log('   Authentication: JWT Enabled');
     console.log('   Rate Limiting: Active');
-    console.log('   CORS: Configured');
+    console.log('   CORS: Configured for Netlify');
     console.log('   Security: Helmet Enabled');
     console.log('   Compression: Active');
     console.log('   Logging: Comprehensive');
