@@ -48,11 +48,22 @@ export const getArticles = (req: any, res: Response) => {
   }
 };
 
-// Create article
+// Create article - COMPATIBLE VERSION
 export const createArticle = (req: any, res: Response) => {
   try {
-    console.log('📝 CREATE ARTICLE - User:', req.user?.username, 'ID:', req.user?.id);
+    console.log('📝 CREATE ARTICLE - Full user:', req.user);
     
+    // Try multiple possible user ID fields
+    const userId = req.user.id || req.user.userId || req.user._id;
+    const username = req.user.username || req.user.email || 'Unknown';
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false,
+        message: 'User ID not found' 
+      });
+    }
+
     const article = {
       _id: Date.now().toString(),
       ...req.body,
@@ -60,14 +71,15 @@ export const createArticle = (req: any, res: Response) => {
       likes: 0,
       comments: [],
       readTime: req.body.readTime || '5 min read',
-      createdBy: req.user.id,
-      createdByUsername: req.user.username,
+      createdBy: String(userId), // Ensure it's a string
+      createdByUsername: username,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     articles.push(article);
     console.log('💾 Article saved. Total articles:', articles.length);
+    console.log('📋 New article createdBy:', article.createdBy, 'Type:', typeof article.createdBy);
 
     res.json({
       success: true,
@@ -83,12 +95,14 @@ export const createArticle = (req: any, res: Response) => {
   }
 };
 
-// Get user's articles - SIMPLE AND CLEAN (EXACTLY LIKE VIDEOS)
+
+// Get user's articles - COMPATIBLE VERSION
 export const getMyArticles = (req: any, res: Response) => {
   try {
-    console.log('📚 GET MY ARTICLES - User:', req.user?.username, 'ID:', req.user?.id);
+    console.log('📚 GET MY ARTICLES - Full user object:', req.user);
+    console.log('📚 User ID options - id:', req.user?.id, 'userId:', req.user?.userId, '_id:', req.user?._id);
     
-    if (!req.user || !req.user.id) {
+    if (!req.user) {
       console.log('❌ No user authenticated');
       return res.status(401).json({ 
         success: false,
@@ -96,10 +110,37 @@ export const getMyArticles = (req: any, res: Response) => {
       });
     }
 
-    const userArticles = articles.filter(article => article.createdBy === req.user.id);
-    console.log('✅ Found', userArticles.length, 'articles for user', req.user.username);
+    // Try multiple possible user ID fields
+    const userId = req.user.id || req.user.userId || req.user._id;
+    
+    if (!userId) {
+      console.log('❌ No user ID found in:', Object.keys(req.user));
+      return res.status(401).json({ 
+        success: false,
+        message: 'User ID not found'
+      });
+    }
 
-    // Return array directly, exactly like getMyVideos
+    console.log('🔍 Using user ID:', userId, 'Type:', typeof userId);
+    console.log('📋 All articles:', articles.map(a => ({ 
+      id: a._id, 
+      createdBy: a.createdBy, 
+      title: a.title?.en,
+      createdByType: typeof a.createdBy
+    })));
+
+    // Convert both to strings for comparison
+    const userIdStr = String(userId).trim();
+    const userArticles = articles.filter(article => {
+      const articleCreatedByStr = String(article.createdBy).trim();
+      const matches = articleCreatedByStr === userIdStr;
+      
+      console.log(`   Comparing: Article "${article._id}" - createdBy:"${articleCreatedByStr}" vs user:"${userIdStr}" = ${matches}`);
+      
+      return matches;
+    });
+
+    console.log('✅ Found', userArticles.length, 'articles for user', req.user.username || req.user.email);
     res.json(userArticles);
     
   } catch (error) {
