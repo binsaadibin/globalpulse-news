@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Save, Send, X, Star, TrendingUp } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast'; // Add this import
 
 interface ArticleFormProps {
   editingArticle?: any;
@@ -17,6 +18,7 @@ interface ArticleFormProps {
 }
 
 export function ArticleForm({ editingArticle, onSave, onCancel, loading, translations }: ArticleFormProps) {
+  const { toast } = useToast(); // Add toast
   const [formData, setFormData] = useState({
     title: editingArticle?.title || { en: '', ar: '', ur: '' },
     description: editingArticle?.description || { en: '', ar: '', ur: '' },
@@ -29,12 +31,60 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
     isTrending: editingArticle?.isTrending || false,
   });
 
+  const [errors, setErrors] = useState<{title?: string; description?: string; content?: string}>({});
+
+  // Validate form based on status
+  const validateForm = (status: 'draft' | 'published') => {
+    const newErrors: {title?: string; description?: string; content?: string} = {};
+    
+    // For drafts, only basic validation
+    if (status === 'draft') {
+      if (!formData.title.en?.trim()) {
+        newErrors.title = 'Title in English is required';
+      }
+    } 
+    // For published articles, full validation
+    else {
+      if (!formData.title.en?.trim()) {
+        newErrors.title = 'Title in English is required';
+      }
+      if (!formData.description.en?.trim()) {
+        newErrors.description = 'Description in English is required';
+      }
+      if (!formData.content.en?.trim()) {
+        newErrors.content = 'Content in English is required';
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (status: 'draft' | 'published') => {
-    onSave({
+    console.log('💾 Attempting to save as:', status);
+    console.log('📝 Form data:', formData);
+
+    // Validate form
+    if (!validateForm(status)) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    // Prepare data for saving
+    const saveData = {
       ...formData,
       status,
       readTime: `${formData.readTime} min read`
-    });
+    };
+
+    console.log('🚀 Sending data to onSave:', saveData);
+    
+    // Call the parent save function
+    onSave(saveData);
   };
 
   return (
@@ -60,8 +110,11 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
                   title: { ...prev.title, en: e.target.value }
                 }))}
                 placeholder="Enter title in English"
-                className="w-full"
+                className={`w-full ${errors.title ? 'border-red-500' : ''}`}
               />
+              {errors.title && (
+                <p className="text-red-500 text-xs mt-1">{errors.title}</p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">{translations.titleAr}</label>
@@ -92,7 +145,10 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
           {/* Article Description Fields */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">{translations.descriptionEn} *</label>
+              <label className="text-sm font-medium mb-2 block">
+                {translations.descriptionEn} 
+                {formData.status === 'published' && ' *'}
+              </label>
               <Textarea
                 value={formData.description.en || ''}
                 onChange={(e) => setFormData(prev => ({
@@ -101,8 +157,11 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
                 }))}
                 placeholder="Enter description in English"
                 rows={3}
-                className="w-full"
+                className={`w-full ${errors.description ? 'border-red-500' : ''}`}
               />
+              {errors.description && (
+                <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">{translations.descriptionAr}</label>
@@ -135,7 +194,10 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
           {/* Article Content Fields */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">{translations.contentEn} *</label>
+              <label className="text-sm font-medium mb-2 block">
+                {translations.contentEn} 
+                {formData.status === 'published' && ' *'}
+              </label>
               <Textarea
                 value={formData.content.en || ''}
                 onChange={(e) => setFormData(prev => ({
@@ -144,8 +206,11 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
                 }))}
                 placeholder={translations.articleContent}
                 rows={6}
-                className="w-full"
+                className={`w-full ${errors.content ? 'border-red-500' : ''}`}
               />
+              {errors.content && (
+                <p className="text-red-500 text-xs mt-1">{errors.content}</p>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">{translations.contentAr}</label>
@@ -239,6 +304,21 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
             </div>
           </div>
 
+          {/* Status Info */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${
+                formData.status === 'draft' ? 'bg-yellow-500' : 'bg-green-500'
+              }`}></div>
+              <p className="text-sm text-blue-800 dark:text-blue-300">
+                {formData.status === 'draft' 
+                  ? '💡 Draft Mode: Only title is required. Save as draft to work on it later.'
+                  : '🚀 Publish Mode: All fields are required. Article will be visible to readers.'
+                }
+              </p>
+            </div>
+          </div>
+
           <div className="flex gap-4 justify-end pt-4 border-t">
             <Button variant="outline" onClick={onCancel} disabled={loading}>
               {translations.cancel}
@@ -247,7 +327,7 @@ export function ArticleForm({ editingArticle, onSave, onCancel, loading, transla
               variant="outline" 
               onClick={() => handleSubmit('draft')} 
               disabled={loading}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 border-yellow-500 text-yellow-600 hover:bg-yellow-50"
             >
               <Save className="h-4 w-4" />
               {translations.saveDraft}

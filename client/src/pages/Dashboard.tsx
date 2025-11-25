@@ -10,7 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArticleForm } from '@/components/ArticleForm';
 import { VideoForm } from '@/components/VideoForm';
-import { Plus, Edit, Trash2, Eye, Video, FileText, Calendar, Users, TrendingUp, Star, Search, Filter, Save, Send, X, Link, Image } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Video, FileText, Calendar, Users, TrendingUp, Star, Search, Filter } from 'lucide-react';
 
 const translations = {
   en: {
@@ -314,14 +314,59 @@ export default function Dashboard() {
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
+  // Debug authentication
   useEffect(() => {
-    fetchUserData();
+    console.log('🔐 AUTH DEBUG:', {
+      currentUser,
+      hasToken: !!localStorage.getItem('token'),
+      token: localStorage.getItem('token'),
+      authHeaders: getAuthHeaders()
+    });
+  }, [currentUser]);
+
+  useEffect(() => {
+    console.log('🏠 Dashboard mounted - checking auth...');
+    const token = localStorage.getItem('token');
+    console.log('🔑 Token exists:', !!token);
+    
+    if (!currentUser && token) {
+      console.log('⚠️ Token exists but currentUser is null - waiting for auth context...');
+    }
+    
+    // Wait for auth context to load
+    const timer = setTimeout(() => {
+      console.log('🔄 Starting data fetch after auth load...');
+      fetchUserData();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
+
+  // Refetch when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      console.log('👤 Current user loaded, refetching data...', currentUser);
+      fetchUserData();
+    }
+  }, [currentUser]);
 
   const fetchUserData = async () => {
     try {
       setLoading(true);
       console.log('🔄 Fetching user data...');
+      
+      // Check if user is authenticated
+      if (!currentUser) {
+        console.log('❌ User not authenticated, skipping data fetch');
+        setArticles([]);
+        setVideos([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('👤 Current User:', currentUser);
+      console.log('🔑 Auth Headers:', getAuthHeaders());
+      
       await Promise.all([
         fetchUserArticles(),
         fetchUserVideos()
@@ -340,73 +385,89 @@ export default function Dashboard() {
 
   const fetchUserArticles = async () => {
     try {
-      console.log('🔍 Fetching user articles from Railway...');
-      console.log('🌐 API URL:', `${API_BASE_URL}/api/articles/my-articles`);
+      console.log('🔍 Fetching user articles...');
+      
+      // Check if user is authenticated
+      if (!currentUser) {
+        console.log('❌ User not authenticated, skipping articles fetch');
+        setArticles([]);
+        return;
+      }
+
       console.log('👤 Current User:', currentUser);
       
-      const headers = getAuthHeaders();
+      // Use fallback approach since /api/articles/my-articles returns 404
+      console.log('🔄 Using fallback: fetch all articles and filter by user');
+      await fetchAllArticlesAndFilter();
 
-      const response = await fetch(`${API_BASE_URL}/api/articles/my-articles`, {
-        headers: headers,
-        method: 'GET'
-      });
+    } catch (error) {
+      console.error('❌ Error fetching user articles:', error);
+      // Try alternative approach
+      await fetchAllArticlesAndFilter();
+    }
+  };
 
-      console.log('📊 Response status:', response.status);
+  // Fallback approach: fetch all articles and filter by user
+  const fetchAllArticlesAndFilter = async () => {
+    try {
+      console.log('🔄 Fetching all articles to filter for user...');
+      
+      const response = await fetch(`${API_BASE_URL}/api/articles`);
       
       if (response.ok) {
-        const data = await response.json();
-        console.log('✅ User articles response:', data);
+        const allArticles = await response.json();
+        console.log('📝 All articles from API:', allArticles);
         
-        let articlesArray = [];
-        
-        if (Array.isArray(data)) {
-          articlesArray = data;
-        } else if (data && Array.isArray(data.articles)) {
-          articlesArray = data.articles;
-        } else if (data && Array.isArray(data.data)) {
-          articlesArray = data.data;
+        if (!currentUser) {
+          console.log('❌ No current user for filtering');
+          setArticles([]);
+          return;
         }
         
-        console.log(`📝 Loaded ${articlesArray.length} user articles from Railway`);
-        setArticles(articlesArray);
+        // Filter articles for current user
+        const userArticles = allArticles.filter((article: any) => {
+          const matchesUser = article.createdBy === currentUser.id || 
+                             article.createdByUsername === currentUser.username;
+          console.log(`🔍 Article ${article._id}: createdBy=${article.createdBy}, username=${article.createdByUsername}, matches=${matchesUser}`);
+          return matchesUser;
+        });
+        
+        console.log(`👤 Filtered ${userArticles.length} articles for user ${currentUser.username}`);
+        setArticles(userArticles);
       } else {
-        console.error('❌ Failed to fetch user articles. Status:', response.status);
-        
-        if (response.status === 401) {
-          toast({
-            title: 'Authentication Required',
-            description: 'Please log in again',
-            variant: 'destructive'
-          });
-        } else if (response.status === 404) {
-          console.error('❌ Endpoint /api/articles/my-articles not found on Railway');
-          toast({
-            title: 'Backend Configuration Error',
-            description: 'The articles endpoint is not deployed on Railway yet',
-            variant: 'destructive'
-          });
-        }
+        console.error('❌ Failed to fetch all articles');
         setArticles([]);
       }
     } catch (error) {
-      console.error('❌ Network error:', error);
-      toast({
-        title: 'Connection Error',
-        description: 'Cannot connect to Railway backend',
-        variant: 'destructive'
-      });
+      console.error('❌ Alternative approach failed:', error);
       setArticles([]);
     }
   };
 
   const fetchUserVideos = async () => {
     try {
+      console.log('🎬 Fetching user videos...');
+      
+      // Check if user is authenticated
+      if (!currentUser) {
+        console.log('❌ User not authenticated, skipping videos fetch');
+        setVideos([]);
+        return;
+      }
+
+      const headers = getAuthHeaders();
+      console.log('🔑 Auth Headers for videos:', headers);
+
       const response = await fetch(`${API_BASE_URL}/api/videos/my-videos`, {
-        headers: getAuthHeaders()
+        headers: headers
       });
+
+      console.log('📊 Videos response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ User videos response:', data);
+        
         let videosArray: Video[] = [];
         
         if (Array.isArray(data)) {
@@ -419,60 +480,138 @@ export default function Dashboard() {
           videosArray = [data];
         }
         
+        console.log(`🎥 Loaded ${videosArray.length} user videos`);
         setVideos(videosArray);
       } else {
+        console.error('❌ Failed to fetch user videos. Status:', response.status);
+        if (response.status === 401) {
+          console.log('🔐 Authentication failed for videos');
+        }
         setVideos([]);
       }
     } catch (error) {
-      console.error('Failed to fetch videos:', error);
+      console.error('❌ Network error fetching videos:', error);
       setVideos([]);
     }
   };
 
-  // Article handlers
-  const handleSaveArticle = async (articleData: any) => {
-    try {
-      setFormLoading(true);
-      const url = editingArticle 
-        ? `${API_BASE_URL}/api/articles/${editingArticle._id}`
-        : `${API_BASE_URL}/api/articles`;
-
-      const method = editingArticle ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: getAuthHeaders(),
-        body: JSON.stringify(articleData)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: articleData.status === 'published' ? t.articlePublished : t.articleSaved,
-          description: editingArticle ? 'Article updated successfully' : `Article ${articleData.status === 'published' ? 'published' : 'saved as draft'} successfully`
-        });
-        resetForms();
-        fetchUserArticles();
-      } else {
-        throw new Error(data.message || t.error);
-      }
-    } catch (error: any) {
-      console.error('Article error:', error);
+// Article handlers - ADD THIS FUNCTION TO YOUR DASHBOARD
+const handleSaveArticle = async (articleData: any) => {
+  try {
+    setFormLoading(true);
+    
+    // Check authentication
+    if (!currentUser) {
       toast({
-        title: t.error,
-        description: error.message || 'Failed to save article',
+        title: 'Authentication Required',
+        description: 'Please log in to save articles',
         variant: 'destructive'
       });
-    } finally {
-      setFormLoading(false);
+      return;
     }
-  };
+
+    // Check if editingArticle exists and has _id
+    const isEditing = editingArticle && editingArticle._id;
+    const url = isEditing 
+      ? `${API_BASE_URL}/api/articles/${editingArticle._id}`
+      : `${API_BASE_URL}/api/articles`;
+
+    const method = isEditing ? 'PUT' : 'POST';
+
+    console.log('💾 ===== SAVING ARTICLE =====');
+    console.log('🌐 URL:', url);
+    console.log('🔧 Method:', method);
+    console.log('👤 User:', currentUser.username);
+    console.log('📋 Article Status:', articleData.status);
+    console.log('📝 Article Data:', {
+      title: articleData.title?.en,
+      description: articleData.description?.en?.substring(0, 50) + '...',
+      content: articleData.content?.en?.substring(0, 50) + '...',
+      category: articleData.category,
+      status: articleData.status,
+      isFeatured: articleData.isFeatured,
+      isTrending: articleData.isTrending
+    });
+
+    const response = await fetch(url, {
+      method,
+      headers: getAuthHeaders(),
+      body: JSON.stringify(articleData)
+    });
+
+    console.log('📡 Response Status:', response.status);
+    console.log('📡 Response OK:', response.ok);
+
+    const data = await response.json();
+    console.log('📨 Save article response:', data);
+
+    if (response.ok) {
+      console.log('✅ Article saved successfully!');
+      toast({
+        title: articleData.status === 'published' ? t.articlePublished : t.articleSaved,
+        description: isEditing ? 'Article updated successfully' : `Article ${articleData.status === 'published' ? 'published' : 'saved as draft'} successfully`
+      });
+      resetForms();
+      
+      // Handle update vs create differently
+      if (isEditing) {
+        // For updates, update the local state directly
+        console.log('🔄 Updating article locally');
+        if (data.article) {
+          setArticles(prev => prev.map(article => 
+            article._id === editingArticle._id ? data.article : article
+          ));
+        } else {
+          // If no article in response, refetch
+          console.log('🔄 No article in update response, refetching...');
+          fetchUserArticles();
+        }
+      } else {
+        // For new articles, add to local state
+        console.log('🔄 Adding new article locally');
+        if (data.article) {
+          setArticles(prev => [data.article, ...prev]);
+        } else {
+          // If no article in response, refetch
+          console.log('🔄 No article in create response, refetching...');
+          fetchUserArticles();
+        }
+      }
+    } else {
+      console.log('❌ Save failed with response:', data);
+      throw new Error(data.message || t.error);
+    }
+  } catch (error: any) {
+    console.error('❌ Article save error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack
+    });
+    toast({
+      title: t.error,
+      description: error.message || 'Failed to save article',
+      variant: 'destructive'
+    });
+  } finally {
+    setFormLoading(false);
+  }
+};
 
   // Video handlers
   const handleSaveVideo = async (videoData: any) => {
     try {
       setFormLoading(true);
+      
+      // Check authentication
+      if (!currentUser) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please log in to save videos',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const url = editingVideo 
         ? `${API_BASE_URL}/api/videos/${editingVideo._id}`
         : `${API_BASE_URL}/api/videos`;
@@ -513,6 +652,16 @@ export default function Dashboard() {
     if (!confirm(t.confirmDelete)) return;
 
     try {
+      // Check authentication
+      if (!currentUser) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please log in to delete content',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/${type}s/${id}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
@@ -545,6 +694,16 @@ export default function Dashboard() {
 
   const handleToggleFeatured = async (id: string, type: 'article' | 'video', currentStatus: boolean) => {
     try {
+      // Check authentication
+      if (!currentUser) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please log in to update content',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const url = `${API_BASE_URL}/api/${type}s/${id}`;
       const updateData = {
         isFeatured: !currentStatus
@@ -581,6 +740,16 @@ export default function Dashboard() {
 
   const handleToggleTrending = async (id: string, type: 'article' | 'video', currentStatus: boolean) => {
     try {
+      // Check authentication
+      if (!currentUser) {
+        toast({
+          title: 'Authentication Required',
+          description: 'Please log in to update content',
+          variant: 'destructive'
+        });
+        return;
+      }
+
       const url = `${API_BASE_URL}/api/${type}s/${id}`;
       const updateData = {
         isTrending: !currentStatus
@@ -735,13 +904,14 @@ export default function Dashboard() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{t.dashboard}</h1>
               <p className="text-gray-600 dark:text-gray-300">
-                {t.welcome}, <strong>{currentUser?.username}</strong>
+                {t.welcome}, <strong>{currentUser?.username || 'User'}</strong>
               </p>
             </div>
             <div className="flex gap-2 mt-4 sm:mt-0">
               <Button
                 onClick={startCreateArticle}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!currentUser}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 {t.createArticle}
@@ -750,6 +920,7 @@ export default function Dashboard() {
                 onClick={startCreateVideo}
                 variant="outline"
                 className="border-green-600 text-green-600 hover:bg-green-50"
+                disabled={!currentUser}
               >
                 <Video className="h-4 w-4 mr-2" />
                 {t.createVideo}
@@ -757,7 +928,29 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        
+
+        {/* Authentication Warning */}
+        {!currentUser && (
+          <Card className="mb-6 border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="text-yellow-600 dark:text-yellow-400">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">
+                    Authentication Required
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                    Please log in to view and manage your content
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Article Form */}
         {showArticleForm && (
@@ -931,7 +1124,9 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="space-y-3">
                     {recentActivity.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No recent activity</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                        {!currentUser ? 'Please log in to see your activity' : 'No recent activity'}
+                      </p>
                     ) : (
                       recentActivity.map((activity) => (
                         <div key={activity.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800">
@@ -980,6 +1175,7 @@ export default function Dashboard() {
                     onClick={startCreateArticle}
                     className="h-16 flex-col gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900 border-2 border-dashed border-blue-200 dark:border-blue-800"
                     variant="ghost"
+                    disabled={!currentUser}
                   >
                     <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     <span className="text-blue-700 dark:text-blue-300">{t.createArticle}</span>
@@ -988,6 +1184,7 @@ export default function Dashboard() {
                     onClick={startCreateVideo}
                     className="h-16 flex-col gap-2 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900 border-2 border-dashed border-green-200 dark:border-green-800"
                     variant="ghost"
+                    disabled={!currentUser}
                   >
                     <Video className="h-5 w-5 text-green-600 dark:text-green-400" />
                     <span className="text-green-700 dark:text-green-300">{t.createVideo}</span>
@@ -1004,28 +1201,43 @@ export default function Dashboard() {
                 <CardContent className="p-8 text-center">
                   <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                    {searchQuery || statusFilter !== 'all' ? 'No matching articles found' : t.noArticles}
+                    {!currentUser 
+                      ? 'Please log in to view your articles'
+                      : searchQuery || statusFilter !== 'all' 
+                        ? 'No matching articles found' 
+                        : t.noArticles
+                    }
                   </h3>
                   <p className="text-gray-500 dark:text-gray-400 mb-4">
-                    {searchQuery || statusFilter !== 'all' 
-                      ? 'Try adjusting your search or filter criteria'
-                      : 'Get started by creating your first article'
+                    {!currentUser
+                      ? 'Log in to create and manage your articles'
+                      : searchQuery || statusFilter !== 'all' 
+                        ? 'Try adjusting your search or filter criteria'
+                        : 'Get started by creating your first article'
                     }
                   </p>
-                  <Button onClick={startCreateArticle}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t.createArticle}
-                  </Button>
-                  {(searchQuery || statusFilter !== 'all') && (
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        setSearchQuery('');
-                        setStatusFilter('all');
-                      }}
-                      className="ml-2"
-                    >
-                      Clear Filters
+                  {currentUser ? (
+                    <>
+                      <Button onClick={startCreateArticle}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        {t.createArticle}
+                      </Button>
+                      {(searchQuery || statusFilter !== 'all') && (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => {
+                            setSearchQuery('');
+                            setStatusFilter('all');
+                          }}
+                          className="ml-2"
+                        >
+                          Clear Filters
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button onClick={() => window.location.href = '/login'}>
+                      Log In
                     </Button>
                   )}
                 </CardContent>
@@ -1088,6 +1300,7 @@ export default function Dashboard() {
                               className={`flex items-center gap-1 ${
                                 article.isFeatured ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : ''
                               }`}
+                              disabled={!currentUser}
                             >
                               <Star className="h-3 w-3" />
                             </Button>
@@ -1098,6 +1311,7 @@ export default function Dashboard() {
                               className={`flex items-center gap-1 ${
                                 article.isTrending ? 'bg-orange-100 text-orange-800 border-orange-300' : ''
                               }`}
+                              disabled={!currentUser}
                             >
                               <TrendingUp className="h-3 w-3" />
                             </Button>
@@ -1108,6 +1322,7 @@ export default function Dashboard() {
                               size="sm"
                               onClick={() => startEditArticle(article)}
                               className="flex items-center gap-1"
+                              disabled={!currentUser}
                             >
                               <Edit className="h-3 w-3" />
                               {t.edit}
@@ -1117,6 +1332,7 @@ export default function Dashboard() {
                               size="sm"
                               onClick={() => handleDelete(article._id, 'article')}
                               className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={!currentUser}
                             >
                               <Trash2 className="h-3 w-3" />
                               {t.delete}
@@ -1137,12 +1353,28 @@ export default function Dashboard() {
               <Card>
                 <CardContent className="p-8 text-center">
                   <Video className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t.noVideos}</h3>
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">Get started by creating your first video</p>
-                  <Button onClick={startCreateVideo}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {t.createVideo}
-                  </Button>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    {!currentUser 
+                      ? 'Please log in to view your videos'
+                      : t.noVideos
+                    }
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    {!currentUser
+                      ? 'Log in to create and manage your videos'
+                      : 'Get started by creating your first video'
+                    }
+                  </p>
+                  {currentUser ? (
+                    <Button onClick={startCreateVideo}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      {t.createVideo}
+                    </Button>
+                  ) : (
+                    <Button onClick={() => window.location.href = '/login'}>
+                      Log In
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -1197,6 +1429,7 @@ export default function Dashboard() {
                               className={`flex items-center gap-1 ${
                                 video.isFeatured ? 'bg-yellow-100 text-yellow-800 border-yellow-300' : ''
                               }`}
+                              disabled={!currentUser}
                             >
                               <Star className="h-3 w-3" />
                             </Button>
@@ -1207,6 +1440,7 @@ export default function Dashboard() {
                               className={`flex items-center gap-1 ${
                                 video.isTrending ? 'bg-orange-100 text-orange-800 border-orange-300' : ''
                               }`}
+                              disabled={!currentUser}
                             >
                               <TrendingUp className="h-3 w-3" />
                             </Button>
@@ -1217,6 +1451,7 @@ export default function Dashboard() {
                               size="sm"
                               onClick={() => startEditVideo(video)}
                               className="flex items-center gap-1"
+                              disabled={!currentUser}
                             >
                               <Edit className="h-3 w-3" />
                               {t.edit}
@@ -1226,6 +1461,7 @@ export default function Dashboard() {
                               size="sm"
                               onClick={() => handleDelete(video._id, 'video')}
                               className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              disabled={!currentUser}
                             >
                               <Trash2 className="h-3 w-3" />
                               {t.delete}

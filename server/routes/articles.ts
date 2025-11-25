@@ -1,3 +1,4 @@
+// server/routes/articles.ts
 import express from 'express';
 import {
   getArticles,
@@ -21,9 +22,9 @@ router.post('/:id/like', likeArticle);
 router.post('/:id/unlike', unlikeArticle);
 router.post('/:id/comments', addComment);
 
-// Protected routes
-router.post('/', authenticateToken, createArticle);
+// Protected routes - ADD THIS ROUTE
 router.get('/my-articles', authenticateToken, getMyArticles);
+router.post('/', authenticateToken, createArticle);
 router.put('/:id', authenticateToken, updateArticle);
 router.delete('/:id', authenticateToken, deleteArticle);
 
