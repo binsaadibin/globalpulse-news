@@ -8,6 +8,7 @@ import { setupRoutes } from './routes/index.js';
 import { apiRateLimit } from './middleware/rateLimit.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import { seedAdvertisements } from './seeders/advertisements.js';
 
 console.log('🚀 GlobalPulse News API Server Starting...');
 
@@ -188,6 +189,7 @@ app.get('/api/status', (req: Request, res: Response) => {
       auth: '/api/auth',
       articles: '/api/articles',
       videos: '/api/videos',
+      advertisements: '/api/advertisements',
       admin: '/api/admin',
       search: '/api/search'
     },
@@ -202,7 +204,7 @@ app.get('/api/docs', (req: Request, res: Response) => {
   res.json({
     name: 'GlobalPulse News API',
     version: '1.0.0',
-    description: 'Complete news management platform API',
+    description: 'Complete news management platform API with Advertisement support',
     baseUrl: 'https://globalpulse-news-production-31ee.up.railway.app',
     authentication: 'JWT Bearer Token',
     cors: {
@@ -235,6 +237,16 @@ app.get('/api/docs', (req: Request, res: Response) => {
         'GET /api/videos': 'Get all published videos',
         'POST /api/videos': 'Create video (Authenticated)',
         'GET /api/videos/my-videos': 'Get user videos (Authenticated)'
+      },
+      advertisements: {
+        'GET /api/advertisements': 'Get all active advertisements',
+        'GET /api/advertisements/position/:position': 'Get ads by position',
+        'GET /api/advertisements/my-ads': 'Get user advertisements (Authenticated)',
+        'POST /api/advertisements': 'Create advertisement (Authenticated)',
+        'PUT /api/advertisements/:id': 'Update advertisement (Authenticated)',
+        'DELETE /api/advertisements/:id': 'Delete advertisement (Authenticated)',
+        'POST /api/advertisements/:id/click': 'Track ad click',
+        'POST /api/advertisements/:id/impression': 'Track ad impression'
       }
     }
   });
@@ -246,7 +258,7 @@ app.get('/api/docs', (req: Request, res: Response) => {
 app.get('/', (req: Request, res: Response) => {
   res.json({
     status: 'OK',
-    message: 'GlobalPulse News API Server',
+    message: 'GlobalPulse News API Server with Advertisement Support',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     documentation: '/api/docs',
@@ -289,7 +301,9 @@ app.use('*', (req: Request, res: Response) => {
       'GET /api/status',
       'GET /api/docs',
       'GET /api/cors-test',
-      'GET /api/articles'
+      'GET /api/articles',
+      'GET /api/videos',
+      'GET /api/advertisements'
     ]
   });
 });
@@ -335,6 +349,17 @@ class ServerManager {
     console.log('🔗 Connecting to MongoDB...');
     await connectDB();
     console.log('✅ MongoDB connected successfully');
+
+    // Seed advertisements in development
+    if (process.env.NODE_ENV === 'development' || process.env.SEED_DATA === 'true') {
+      console.log('🌱 Seeding initial advertisement data...');
+      try {
+        await seedAdvertisements();
+        console.log('✅ Advertisement data seeded successfully');
+      } catch (seedError) {
+        console.warn('⚠️  Advertisement seed data creation skipped or failed:', seedError);
+      }
+    }
   }
 
   private async startHttpServer(port: number): Promise<void> {
@@ -368,6 +393,7 @@ class ServerManager {
     console.log('   Security: Helmet Enabled');
     console.log('   Compression: Active');
     console.log('   Logging: Comprehensive');
+    console.log('   Advertisement Support: ✅ Enabled');
   }
 
   private setupGracefulShutdown(): void {
